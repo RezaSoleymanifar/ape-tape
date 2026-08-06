@@ -29,6 +29,19 @@ h1 span{color:var(--hot)}
 .stamp{font-family:var(--mono);font-size:12.5px;color:var(--dim);margin:22px 0 0}
 .stamp b{color:var(--hot);font-weight:500}
 
+.ticker{margin:26px 0 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  overflow:hidden;white-space:nowrap;padding:11px 0;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.ticker-run{display:inline-block;padding-left:100%;animation:slide 46s linear infinite;
+  font-family:var(--mono);font-size:13px}
+.ticker-run:hover{animation-play-state:paused}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+.tick{margin-right:30px}
+.tick b{color:var(--ink);font-weight:700}
+.tick i{font-style:normal;color:var(--dim)}
+@media (prefers-reduced-motion:reduce){.ticker-run{animation:none;padding-left:0}}
+
 section{padding:44px 0}
 h2{font-size:13px;font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase;
   color:var(--dim);font-weight:400;margin:0 0 6px}
@@ -75,6 +88,7 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:13px;padding:
     They publish the current snapshot and no history, so this reads it every hour and keeps what
     it read. Metadata about Reddit mention counts, on a schedule.</p>
     <p class="stamp" id="stamp">loading the tape&hellip;</p>
+    <div class="ticker" aria-hidden="true"><div class="ticker-run" id="run"></div></div>
   </header>
 
   <section>
@@ -129,9 +143,23 @@ function render(data) {
     ' &middot; ' + hours + ' observation' + (hours === 1 ? '' : 's') +
     ' &middot; ' + (hours / 24).toFixed(1) + ' days recorded';
 
+  drawTicker(last);
   drawNow(last);
   drawCards(obs);
   drawBump(obs);
+}
+
+function drawTicker(last) {
+  const rows = [...(last.boards.stocks || []).slice(0, 14),
+                ...(last.boards.crypto || []).slice(0, 6)];
+  const html = rows.map(r => {
+    const d = r.delta_24h;
+    const cls = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
+    return `<span class="tick"><b>${r.ticker}</b> ${r.mentions.toLocaleString()} ` +
+           `<i class="${cls}">${d > 0 ? '▲' : (d < 0 ? '▼' : '•')}` +
+           `${Math.abs(d).toLocaleString()}</i></span>`;
+  }).join('');
+  document.getElementById('run').innerHTML = html + html;   // doubled, so the loop is seamless
 }
 
 function drawNow(last) {
