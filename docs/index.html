@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ape-tape — hourly record of the ApeWisdom boards</title>
 <meta name="description" content="A live dashboard of Reddit ticker mentions, recorded hourly. ApeWisdom publishes no history, so this keeps one.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%23151109'/><ellipse cx='11' cy='30' rx='8' ry='9' fill='%23f8a520'/><ellipse cx='53' cy='30' rx='8' ry='9' fill='%23f8a520'/><path d='M32 6c12 0 19 8 19 20 0 15-8 27-19 27s-19-12-19-27C13 14 20 6 32 6Z' fill='%23f8a520'/><path d='M18 30c0-9 6-15 14-15s14 6 14 15c0 10-6 17-14 17s-14-7-14-17Z' fill='%23f2d6a8'/><ellipse cx='26' cy='30' rx='2' ry='1.6' fill='%231a1205'/><ellipse cx='38' cy='30' rx='2' ry='1.6' fill='%231a1205'/><path d='M25 45c4 1.6 9 1.6 13 0' stroke='%231a1205' stroke-width='1.8' fill='none' stroke-linecap='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230b0d11'/><circle cx='32' cy='32' r='24' fill='none' stroke='%23f0b429' stroke-width='5'/><circle cx='32' cy='32' r='5.5' fill='%23f0b429'/><circle cx='32' cy='16.5' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='32' cy='47.5' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='16.5' cy='32' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='47.5' cy='32' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
@@ -30,8 +30,7 @@ a:hover{text-decoration:underline}
 .brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;
   letter-spacing:-.03em;white-space:nowrap}
 .brand span{color:var(--hot)}
-.logo{width:34px;height:34px;flex:none}
-.reel{width:22px;height:22px;flex:none;transform-origin:50% 50%;
+.reel{width:26px;height:26px;flex:none;transform-origin:50% 50%;
   animation:jiggle 2.6s ease-in-out infinite}
 @keyframes jiggle{
   0%,72%,100%{transform:rotate(0deg)}
@@ -50,10 +49,10 @@ a:hover{text-decoration:underline}
   background:#0e1117;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
-.run{display:inline-block;padding-left:100%;animation:slide 60s linear infinite;
-  font-family:var(--mono);font-size:12.5px}
+.run{display:inline-block;white-space:nowrap;animation:slide 70s linear infinite;
+  font-family:var(--mono);font-size:12.5px;will-change:transform}
 .run:hover{animation-play-state:paused}
-@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .tick{margin-right:26px}
 .tick b{font-weight:700}
 
@@ -107,54 +106,6 @@ footer p{margin:8px 0 0;max-width:80em}
 <body>
 
 <div class="bar">
-  <svg class="logo" viewBox="0 0 64 64" role="img" aria-label="ape-tape">
-    <defs>
-      <linearGradient id="fur" x1="0.1" y1="0" x2="0.95" y2="1">
-        <stop offset="0" stop-color="#ffd54a"/><stop offset="0.5" stop-color="#f9a51a"/>
-        <stop offset="1" stop-color="#ef7a0c"/>
-      </linearGradient>
-      <linearGradient id="face" x1="0.2" y1="0" x2="0.8" y2="1">
-        <stop offset="0" stop-color="#f3dcb4"/><stop offset="1" stop-color="#dcb887"/>
-      </linearGradient>
-    </defs>
-    <!-- ears, set wide and low like the reference -->
-    <ellipse cx="9.5" cy="31" rx="8.6" ry="10" fill="url(#fur)" stroke="#171009" stroke-width="2"/>
-    <ellipse cx="10.4" cy="31" rx="4.2" ry="5.4" fill="#e7c193"/>
-    <ellipse cx="54.5" cy="31" rx="8.6" ry="10" fill="url(#fur)" stroke="#171009" stroke-width="2"/>
-    <ellipse cx="53.6" cy="31" rx="4.2" ry="5.4" fill="#e7c193"/>
-    <!-- skull: tall crown, narrowing jaw -->
-    <path d="M32 4.5c11.8 0 18.6 7.8 18.6 19.4 0 6-.9 11.6-2.7 16.4C45.4 47.8 39.4 53 32 53
-             s-13.4-5.2-15.9-12.7C14.3 35.5 13.4 29.9 13.4 23.9 13.4 12.3 20.2 4.5 32 4.5Z"
-          fill="url(#fur)" stroke="#171009" stroke-width="2"/>
-    <!-- brow shelf, heavy — the thing that makes it read as bored -->
-    <path d="M17.5 24.5c4.4-3.4 9.4-4.4 14.5-4.4s10.1 1 14.5 4.4c-.6 2.6-2 4.2-4 4.6
-             -3.2.7-6.6-1.2-10.5-1.2s-7.3 1.9-10.5 1.2c-2-.4-3.4-2-4-4.6Z"
-          fill="#c9852a" opacity="0.55"/>
-    <!-- muzzle: wide, rounded, dominant -->
-    <path d="M20 34.2c0-6.6 5.4-10.4 12-10.4s12 3.8 12 10.4c0 3.4-1.1 6.4-3 8.6
-             -2.2 2.6-5.3 4-9 4s-6.8-1.4-9-4c-1.9-2.2-3-5.2-3-8.6Z"
-          fill="url(#face)" stroke="#171009" stroke-width="1.7"/>
-    <!-- heavy lids: the eye is mostly covered, only a sliver shows -->
-    <path d="M20.6 27.4c3.4-1.2 7-1.2 10.2.2-1.2 2.6-3.6 3.8-6 3.6-2-.2-3.6-1.6-4.2-3.8Z"
-          fill="#f3dcb4" stroke="#171009" stroke-width="1.3"/>
-    <path d="M33.2 27.6c3.2-1.4 6.8-1.4 10.2-.2-.6 2.2-2.2 3.6-4.2 3.8-2.4.2-4.8-1-6-3.6Z"
-          fill="#f3dcb4" stroke="#171009" stroke-width="1.3"/>
-    <path d="M22.6 29.1c1.4 1.4 4.2 1.6 6.4.3" stroke="#171009" stroke-width="2.4"
-          fill="none" stroke-linecap="round"/>
-    <path d="M35 29.4c2.2 1.3 5 1.1 6.4-.3" stroke="#171009" stroke-width="2.4"
-          fill="none" stroke-linecap="round"/>
-    <!-- nostrils, angled -->
-    <ellipse cx="28.2" cy="37.4" rx="2.3" ry="1.6" fill="#171009" transform="rotate(-12 28.2 37.4)"/>
-    <ellipse cx="35.8" cy="37.4" rx="2.3" ry="1.6" fill="#171009" transform="rotate(12 35.8 37.4)"/>
-    <!-- the flat, unimpressed mouth -->
-    <path d="M25.4 44.4c4.2 2 9 2 13.2 0" stroke="#171009" stroke-width="1.9"
-          fill="none" stroke-linecap="round"/>
-    <path d="M26.6 46.2c3.4 1.3 7.4 1.3 10.8 0" stroke="#c69a68" stroke-width="1.4"
-          fill="none" stroke-linecap="round" opacity="0.8"/>
-    <!-- crown tufts -->
-    <path d="M24.5 7.6c2-2.6 4.2-3.4 6-3M34 4.9c2.4-.4 4.6.6 6.4 3.1" stroke="#171009"
-          stroke-width="1.8" fill="none" stroke-linecap="round"/>
-  </svg>
   <div class="brand">ape&#8209;<span>tape</span></div>
   <svg class="reel" viewBox="0 0 64 64" role="img" aria-label="tape">
     <circle cx="32" cy="32" r="25" fill="#12151b" stroke="#f0b429" stroke-width="4"/>
