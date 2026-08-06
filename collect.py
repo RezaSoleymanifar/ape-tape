@@ -49,8 +49,8 @@ SERIES = os.path.join(ROOT, "docs", "series.json")
 API = "https://apewisdom.io/api/v1.0/filter/{board}/page/{page}"
 
 # Every board the API answers for. The per-subreddit ones are not derivable
-# from the aggregate — wallstreetbets moving alone is a different fact from the
-# whole board moving — so each is recorded separately.
+# from the aggregate, wallstreetbets moving alone is a different fact from the
+# whole board moving, so each is recorded separately.
 BOARDS = [
     "all-stocks", "all-crypto", "wallstreetbets", "stocks", "cryptocurrency",
     "options", "investing", "stockmarket", "pennystocks",

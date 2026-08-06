@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ape-tape — hourly record of the ApeWisdom boards</title>
+<title>ape-tape, hourly record of the ApeWisdom boards</title>
 <meta name="description" content="A live dashboard of Reddit ticker mentions, recorded hourly. ApeWisdom publishes no history, so this keeps one.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230b0d11'/><circle cx='32' cy='32' r='24' fill='none' stroke='%23f0b429' stroke-width='5'/><circle cx='32' cy='32' r='5.5' fill='%23f0b429'/><circle cx='32' cy='16.5' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='32' cy='47.5' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='16.5' cy='32' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='47.5' cy='32' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,8 +150,8 @@ footer p{margin:8px 0 0;max-width:80em}
   <details>
     <summary>What this is</summary>
     <p>ApeWisdom counts how often each <b>ticker</b> is mentioned and upvoted on nine finance
-    subreddits — all-stocks, all-crypto, wallstreetbets, stocks, cryptocurrency, options,
-    investing, stockmarket, pennystocks — and publishes only the current snapshot. This reads it
+    subreddits: all-stocks, all-crypto, wallstreetbets, stocks, cryptocurrency, options,
+    investing, stockmarket, pennystocks, and publishes only the current snapshot. This reads it
     hourly and keeps what it read. It is not Reddit data: no posts, comments, users or topics are
     exposed or stored. Ticker matching is theirs and unpublished, so common-word symbols
     (<code>OPEN</code>, <code>IT</code>, <code>ALL</code>) and private companies do appear.
@@ -208,13 +208,13 @@ function drawTiles(last) {
   const conc = rows.slice(0, 3).reduce((a, r) => a + r.share, 0);
   const mover = rows.slice().sort((a, b) => (b.delta_24h || 0) - (a.delta_24h || 0))[0] || {};
   document.getElementById('tiles').innerHTML = `
-    <div class="tile wide"><b>${top.ticker || '—'}</b>
-      <span>loudest — ${((top.share || 0) * 100).toFixed(0)}% of every mention on the board</span></div>
-    <div class="tile"><b>${mover.ticker || '—'}</b>
+    <div class="tile wide"><b>${top.ticker || 'n/a'}</b>
+      <span>loudest, ${((top.share || 0) * 100).toFixed(0)}% of every mention on the board</span></div>
+    <div class="tile"><b>${mover.ticker || 'n/a'}</b>
       <span>fastest riser, ${(mover.delta_24h || 0) > 0 ? '+' : ''}${(mover.delta_24h || 0).toLocaleString()} in 24h</span></div>
     <div class="tile"><b>${(conc * 100).toFixed(0)}%</b>
       <span>attention in the top three names</span></div>
-    <div class="tile"><b>${churn === undefined ? '—' : (churn * 100).toFixed(0) + '%'}</b>
+    <div class="tile"><b>${churn === undefined ? 'n/a' : (churn * 100).toFixed(0) + '%'}</b>
       <span>of the board turned over this hour</span></div>
     <div class="tile"><b>${fresh}</b><span>names that were not here an hour ago</span></div>`;
 }
@@ -228,7 +228,7 @@ function drawBoard(last) {
       <td class="tk">${r.ticker}${r.new_entry ? '<span class="new">new</span>' : ''}</td>
       <td class="n">${r.mentions.toLocaleString()}</td>
       <td class="n ${dc}">${d > 0 ? '+' : ''}${d.toLocaleString()}</td>
-      <td class="n ${mc}">${mv === null || mv === undefined ? '—' : (mv > 0 ? '+' + mv : mv)}</td></tr>`;
+      <td class="n ${mc}">${mv === null || mv === undefined ? 'n/a' : (mv > 0 ? '+' + mv : mv)}</td></tr>`;
   }).join('');
 }
 

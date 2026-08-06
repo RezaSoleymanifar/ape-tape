@@ -7,7 +7,7 @@ An hourly record of the [ApeWisdom](https://apewisdom.io) boards.
 ## What it is
 
 ApeWisdom counts how often each **ticker** is mentioned and upvoted on nine
-finance subreddits, and publishes only the current snapshot — no history
+finance subreddits, and publishes only the current snapshot, no history
 endpoint. This reads it hourly and keeps what it read, so a series exists.
 
 It is not Reddit data. There are no posts, comments, users, subreddit
@@ -16,8 +16,8 @@ their method is unpublished, so common-word symbols (`OPEN`, `IT`, `ALL`) and
 private companies do appear in the counts.
 
 Boards recorded: `all-stocks`, `all-crypto`, `wallstreetbets`, `stocks`,
-`cryptocurrency`, `options`, `investing`, `stockmarket`, `pennystocks` —
-top 100 of each, hourly.
+`cryptocurrency`, `options`, `investing`, `stockmarket`, `pennystocks`.
+Top 100 of each, hourly.
 
 ## What is stored
 
@@ -32,7 +32,7 @@ Numbers we computed from the board, not the board itself:
 | `new_entry` | not on the board an hour ago |
 | `churn` | fraction of the board that turned over |
 
-Every row carries `known_at` — when we read it, not when the posts were written.
+Every row carries `known_at`, when we read it, not when the posts were written.
 The posts themselves are not stored.
 
 ## Running it
@@ -66,7 +66,7 @@ returned at the time. Not investment advice.
 
 ## Related
 
-[Vintage](https://github.com/RezaSoleymanifar/vintage) — point-in-time market
+[Vintage](https://github.com/RezaSoleymanifar/vintage), point-in-time market
 data, where `known_at` is the index this joins against.
 
 MIT licensed.
