@@ -3,304 +3,301 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ape-tape — an hourly record of the ApeWisdom boards</title>
-<meta name="description" content="An hourly record of the ApeWisdom Reddit mention boards. They publish only the current snapshot, so this keeps the history.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%23151109'/><circle cx='12' cy='26' r='8' fill='%23f0b429'/><circle cx='52' cy='26' r='8' fill='%23f0b429'/><path d='M32 8c11.6 0 18 8.4 18 19 0 12.8-8 24-18 24s-18-11.2-18-24C14 16.4 20.4 8 32 8Z' fill='%23f0b429'/><ellipse cx='32' cy='40' rx='12.5' ry='10.5' fill='%238a5a12'/><path d='M13 24.5h38v7.5a3 3 0 0 1-3 3H16a3 3 0 0 1-3-3Z' fill='%230b0d11'/><rect x='15.5' y='26.4' width='14' height='6.4' rx='2' fill='%23f0b429'/><rect x='34.5' y='26.4' width='14' height='6.4' rx='2' fill='%23f0b429'/></svg>">
+<title>ape-tape — hourly record of the ApeWisdom boards</title>
+<meta name="description" content="A live dashboard of Reddit ticker mentions, recorded hourly. ApeWisdom publishes no history, so this keeps one.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%23151109'/><ellipse cx='11' cy='30' rx='8' ry='9' fill='%23f8a520'/><ellipse cx='53' cy='30' rx='8' ry='9' fill='%23f8a520'/><path d='M32 6c12 0 19 8 19 20 0 15-8 27-19 27s-19-12-19-27C13 14 20 6 32 6Z' fill='%23f8a520'/><path d='M18 30c0-9 6-15 14-15s14 6 14 15c0 10-6 17-14 17s-14-7-14-17Z' fill='%23f2d6a8'/><ellipse cx='26' cy='30' rx='2' ry='1.6' fill='%231a1205'/><ellipse cx='38' cy='30' rx='2' ry='1.6' fill='%231a1205'/><path d='M25 45c4 1.6 9 1.6 13 0' stroke='%231a1205' stroke-width='1.8' fill='none' stroke-linecap='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0b0d11; --panel:#12151b; --line:#1f242d; --ink:#eef2f7; --dim:#8792a3;
-  --hot:#f0b429; --up:#3ddc84; --down:#ff6b5e; --cool:#6ba4ff;
+  --bg:#0b0d11; --panel:#12151b; --panel2:#161a21; --line:#1f242d;
+  --ink:#eef2f7; --dim:#8792a3; --hot:#f0b429; --up:#3ddc84; --down:#ff6b5e;
   --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
+html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
-  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
-a{color:var(--hot)}
-.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
-header{padding:64px 0 28px}
-h1{font-size:clamp(34px,6vw,60px);font-weight:800;letter-spacing:-.035em;margin:0 0 14px;
-  line-height:1;display:flex;align-items:center;gap:16px}
-.logo{width:.95em;height:.95em;flex:none}
-h1 span{color:var(--hot)}
-.lede{color:var(--dim);font-size:18px;max-width:44em;margin:0}
-.lede b{color:var(--ink);font-weight:600}
-.stamp{font-family:var(--mono);font-size:12.5px;color:var(--dim);margin:22px 0 0}
-.stamp b{color:var(--hot);font-weight:500}
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column}
+a{color:var(--hot);text-decoration:none}
+a:hover{text-decoration:underline}
 
-.ticker{margin:26px 0 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  overflow:hidden;white-space:nowrap;padding:11px 0;
-  -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
-  mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
-.ticker-run{display:inline-block;padding-left:100%;animation:slide 46s linear infinite;
-  font-family:var(--mono);font-size:13px}
-.ticker-run:hover{animation-play-state:paused}
+/* ------------------------------------------------------------------ head */
+.bar{display:flex;align-items:center;gap:14px;padding:12px 20px;
+  border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;
+  letter-spacing:-.03em;white-space:nowrap}
+.brand span{color:var(--hot)}
+.logo{width:34px;height:34px;flex:none}
+.reel{width:22px;height:22px;flex:none;transform-origin:50% 50%;
+  animation:jiggle 2.6s ease-in-out infinite}
+@keyframes jiggle{
+  0%,72%,100%{transform:rotate(0deg)}
+  76%{transform:rotate(-9deg)}82%{transform:rotate(7deg)}
+  88%{transform:rotate(-4deg)}94%{transform:rotate(2deg)}}
+@media (prefers-reduced-motion:reduce){.reel{animation:none}}
+.meta{margin-left:auto;display:flex;align-items:center;gap:18px;
+  font-family:var(--mono);font-size:12px;color:var(--dim);flex-wrap:wrap}
+.meta b{color:var(--hot);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--up);display:inline-block;
+  margin-right:6px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ---------------------------------------------------------------- ticker */
+.ticker{overflow:hidden;white-space:nowrap;padding:9px 0;border-bottom:1px solid var(--line);
+  background:#0e1117;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.run{display:inline-block;padding-left:100%;animation:slide 60s linear infinite;
+  font-family:var(--mono);font-size:12.5px}
+.run:hover{animation-play-state:paused}
 @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-100%)}}
-.tick{margin-right:30px}
-.tick b{color:var(--ink);font-weight:700}
-.tick i{font-style:normal;color:var(--dim)}
-@media (prefers-reduced-motion:reduce){.ticker-run{animation:none;padding-left:0}}
+.tick{margin-right:26px}
+.tick b{font-weight:700}
 
-section{padding:44px 0}
-h2{font-size:13px;font-family:var(--mono);letter-spacing:.2em;text-transform:uppercase;
-  color:var(--dim);font-weight:400;margin:0 0 6px}
-.sub{color:var(--dim);font-size:15px;margin:0 0 22px;max-width:52em}
+/* ------------------------------------------------------------------ grid */
+.grid{flex:1;display:grid;gap:12px;padding:12px 20px 20px;
+  grid-template-columns:1fr;align-content:start}
+@media(min-width:1000px){
+  .grid{grid-template-columns:2.1fr 1fr;grid-template-rows:auto 1fr}
+  .chart{grid-column:1;grid-row:1 / span 2}
+  .stats{grid-column:2;grid-row:1}
+  .board{grid-column:2;grid-row:2;min-height:0}
+}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;min-width:0}
+.card h2{margin:0 0 2px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);font-weight:400}
+.card .hint{margin:0 0 12px;color:var(--dim);font-size:12px}
 
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
-.empty{color:var(--dim);font-family:var(--mono);font-size:13px;padding:40px 0;text-align:center}
-
-/* the bump chart — rank over time, which is the view nobody else can draw */
 #bump{width:100%;height:auto;display:block;overflow:visible}
-.bump-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
-.bump-dot{stroke:var(--bg);stroke-width:1.5}
-.bump-label{font-family:var(--mono);font-size:11px;fill:var(--ink)}
-.axis{font-family:var(--mono);font-size:10px;fill:var(--dim)}
-.grid{stroke:var(--line);stroke-width:1}
+.bump-line{fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+.bump-dot{stroke:var(--panel);stroke-width:1.6}
+.bump-label{font-family:var(--mono);font-size:11px}
+.axis{font-family:var(--mono);font-size:9.5px;fill:var(--dim)}
+.grid-line{stroke:var(--line);stroke-width:1}
+.empty{color:var(--dim);font-family:var(--mono);font-size:12.5px;padding:70px 0;text-align:center}
 
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--dim);font-weight:400;text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
-td{padding:11px 10px;border-bottom:1px solid var(--line)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
+.tile b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.tile span{display:block;color:var(--dim);font-size:11px;margin-top:4px;line-height:1.35}
+.tile.wide{grid-column:1 / -1}
+
+.scroll{overflow:auto;max-height:340px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{position:sticky;top:0;background:var(--panel);font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:400;
+  text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line)}
 td.tk{font-family:var(--mono);font-weight:700}
 td.n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono)}
 th.n{text-align:right}
 .up{color:var(--up)}.down{color:var(--down)}.dimc{color:var(--dim)}
-.tag{font-family:var(--mono);font-size:10px;border:1px solid var(--hot);color:var(--hot);
-  border-radius:4px;padding:1px 6px;margin-left:7px}
+.new{font-family:var(--mono);font-size:9px;border:1px solid var(--hot);color:var(--hot);
+  border-radius:3px;padding:0 4px;margin-left:5px}
 
-.what{display:grid;grid-template-columns:1fr;gap:14px;margin-top:20px}
-@media(min-width:820px){.what{grid-template-columns:repeat(3,1fr)}}
-.what div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
-.what h3{margin:0 0 8px;font-size:14px;font-weight:600}
-.what p{margin:0;color:var(--dim);font-size:14px;line-height:1.6}
-.what b{color:var(--ink);font-weight:600}
-.what code{font-family:var(--mono);font-size:12.5px;color:var(--hot)}
-.cards{display:grid;grid-template-columns:1fr;gap:14px;margin-top:20px}
-@media(min-width:760px){.cards{grid-template-columns:repeat(3,1fr)}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
-.card b{display:block;font-size:30px;font-weight:800;letter-spacing:-.02em}
-.card span{display:block;color:var(--dim);font-size:13px;margin-top:6px}
-
-footer{border-top:1px solid var(--line);color:var(--dim);font-size:13px;padding:30px 0 70px;
-  line-height:1.7;margin-top:30px}
+footer{padding:10px 20px 16px;color:var(--dim);font-size:11.5px;border-top:1px solid var(--line)}
+footer details summary{cursor:pointer;color:var(--dim)}
+footer p{margin:8px 0 0;max-width:80em}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <h1><svg class="logo" viewBox="0 0 64 64" role="img" aria-label="ape-tape">
-      <defs>
-        <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#ffd75e"/><stop offset="1" stop-color="#e09a12"/>
-        </linearGradient>
-        <linearGradient id="muz" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#8a5a12"/><stop offset="1" stop-color="#6b4310"/>
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="15" fill="#151109"/>
-      <circle cx="12" cy="26" r="8" fill="url(#fur)"/><circle cx="12" cy="26" r="3.6" fill="#8a5a12"/>
-      <circle cx="52" cy="26" r="8" fill="url(#fur)"/><circle cx="52" cy="26" r="3.6" fill="#8a5a12"/>
-      <path d="M32 8c11.6 0 18 8.4 18 19 0 12.8-8 24-18 24s-18-11.2-18-24C14 16.4 20.4 8 32 8Z"
-            fill="url(#fur)"/>
-      <ellipse cx="32" cy="40" rx="12.5" ry="10.5" fill="url(#muz)"/>
-      <ellipse cx="28.2" cy="37.4" rx="1.7" ry="2.2" fill="#2a1a05"/>
-      <ellipse cx="35.8" cy="37.4" rx="1.7" ry="2.2" fill="#2a1a05"/>
-      <path d="M26 44.6c3 2.6 9 2.6 12 0" stroke="#2a1a05" stroke-width="2.3"
-            fill="none" stroke-linecap="round"/>
-      <path d="M13 24.5h38v7.5a3 3 0 0 1-3 3H16a3 3 0 0 1-3-3Z" fill="#0b0d11"/>
-      <rect x="15.5" y="26.4" width="14" height="6.4" rx="2" fill="#f0b429" opacity="0.92"/>
-      <rect x="34.5" y="26.4" width="14" height="6.4" rx="2" fill="#f0b429" opacity="0.92"/>
-      <path d="M17 32.4 22 26.4M36 32.4 41 26.4" stroke="#fff6d8" stroke-width="1.5"
-            opacity="0.5" stroke-linecap="round"/>
-      <path d="M24 12c3-2.6 13-2.6 16 0" stroke="#fff2c4" stroke-width="1.6" fill="none"
-            opacity="0.35" stroke-linecap="round"/>
-    </svg>ape&#8209;<span>tape</span></h1>
-    <p class="lede">An hourly record of the <a href="https://apewisdom.io">ApeWisdom</a> boards.
-    They publish the current snapshot and no history, so this reads it every hour and keeps what
-    it read. Metadata about Reddit mention counts, on a schedule.</p>
-    <p class="stamp" id="stamp">loading the tape&hellip;</p>
-    <div class="ticker" aria-hidden="true"><div class="ticker-run" id="run"></div></div>
-  </header>
+<div class="bar">
+  <svg class="logo" viewBox="0 0 64 64" role="img" aria-label="ape-tape">
+    <defs>
+      <linearGradient id="fur" x1="0.15" y1="0" x2="0.9" y2="1">
+        <stop offset="0" stop-color="#ffd24a"/><stop offset="0.55" stop-color="#f8a520"/>
+        <stop offset="1" stop-color="#e8720d"/>
+      </linearGradient>
+      <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f2d6a8"/><stop offset="1" stop-color="#e0b981"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="11.5" cy="30" rx="8.5" ry="9.5" fill="url(#fur)" stroke="#1a1205" stroke-width="1.6"/>
+    <ellipse cx="12" cy="30" rx="4" ry="5" fill="#e8b98a" opacity="0.55"/>
+    <ellipse cx="52.5" cy="30" rx="8.5" ry="9.5" fill="url(#fur)" stroke="#1a1205" stroke-width="1.6"/>
+    <ellipse cx="52" cy="30" rx="4" ry="5" fill="#e8b98a" opacity="0.55"/>
+    <path d="M32 6c12 0 19 8 19 20 0 15-8 27-19 27s-19-12-19-27C13 14 20 6 32 6Z"
+          fill="url(#fur)" stroke="#1a1205" stroke-width="1.8"/>
+    <path d="M18 30c0-9 6-15 14-15s14 6 14 15c0 4-1.6 7-4 8.6-2 1.3-2.4 4-1 6 1.4 2-1 4.4-4 4.8
+             -3.4.5-6.6.5-10 0-3-.4-5.4-2.8-4-4.8 1.4-2 1-4.7-1-6C19.6 37 18 34 18 30Z"
+          fill="url(#face)" stroke="#1a1205" stroke-width="1.5"/>
+    <path d="M21.6 29c2.8-2.2 6.2-2.2 9 0M33.4 29c2.8-2.2 6.2-2.2 9 0" stroke="#1a1205"
+          stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <ellipse cx="26" cy="30.6" rx="1.9" ry="1.4" fill="#1a1205"/>
+    <ellipse cx="37.9" cy="30.6" rx="1.9" ry="1.4" fill="#1a1205"/>
+    <ellipse cx="27.6" cy="38.4" rx="2" ry="1.5" fill="#1a1205"/>
+    <ellipse cx="36.4" cy="38.4" rx="2" ry="1.5" fill="#1a1205"/>
+    <path d="M25.5 45.4c4 1.6 9 1.6 13 0" stroke="#1a1205" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  </svg>
+  <div class="brand">ape&#8209;<span>tape</span></div>
+  <svg class="reel" viewBox="0 0 64 64" role="img" aria-label="tape">
+    <circle cx="32" cy="32" r="25" fill="#12151b" stroke="#f0b429" stroke-width="4"/>
+    <circle cx="32" cy="32" r="5.4" fill="#f0b429"/>
+    <circle cx="32" cy="16.5" r="5" fill="none" stroke="#f0b429" stroke-width="3"/>
+    <circle cx="32" cy="47.5" r="5" fill="none" stroke="#f0b429" stroke-width="3"/>
+    <circle cx="16.5" cy="32" r="5" fill="none" stroke="#f0b429" stroke-width="3"/>
+    <circle cx="47.5" cy="32" r="5" fill="none" stroke="#f0b429" stroke-width="3"/>
+  </svg>
+  <div class="meta" id="meta"><span class="dot"></span>connecting&hellip;</div>
+</div>
 
-  <section>
-    <h2>What this is, exactly</h2>
-    <div class="what">
-      <div>
-        <h3>What ApeWisdom counts</h3>
-        <p>How often each <b>ticker</b> is mentioned and upvoted on nine finance subreddits:
-        all-stocks, all-crypto, wallstreetbets, stocks, cryptocurrency, options, investing,
-        stockmarket, pennystocks. Seven numbers per ticker &mdash; rank, mentions, upvotes, and
-        the same figures from 24 hours ago.</p>
-      </div>
-      <div>
-        <h3>What it is not</h3>
-        <p>Not Reddit data. There are <b>no posts, comments, users, subreddit statistics or
-        topics</b> here, and none are stored. A symbol nobody names is invisible, and a thread
-        with a thousand comments about the market that mentions no ticker does not exist to it.</p>
-      </div>
-      <div>
-        <h3>Who matched the tickers</h3>
-        <p>They did, and the method is unpublished. Common-word symbols like <code>OPEN</code>,
-        <code>IT</code> and <code>ALL</code>, and private companies like <code>SPCX</code>, do
-        appear. We record what the board said rather than correcting it, because a correction we
-        invented would be the thing you could not audit later.</p>
-      </div>
-    </div>
-  </section>
+<div class="ticker"><div class="run" id="run"></div></div>
 
-  <section>
-    <h2>How the crowd moves</h2>
-    <p class="sub">Board rank, hour by hour. Down is climbing the board.</p>
-    <div class="panel">
-      <svg id="bump" viewBox="0 0 1100 420" role="img" aria-label="Ticker rank over time"></svg>
-      <p class="empty" id="bump-empty" hidden>Not enough readings yet to draw a line.</p>
-    </div>
-  </section>
+<div class="grid">
+  <div class="card chart">
+    <h2>Rank, hour by hour</h2>
+    <p class="hint">Nine finance subreddits, top of the board. Down is climbing.</p>
+    <svg id="bump" viewBox="0 0 1000 460" role="img" aria-label="Ticker rank over time"></svg>
+    <p class="empty" id="bump-empty" hidden>Two readings needed before a line exists.
+      The tape is one hour old.</p>
+  </div>
 
-  <section>
-    <h2>Right now</h2>
-    <p class="sub">The latest reading. Tickers are attributed by ApeWisdom, not by us &mdash;
-    their matching is unpublished, so common-word symbols and private companies do slip in.</p>
-    <div class="panel">
+  <div class="card stats">
+    <h2>This hour</h2>
+    <div class="tiles" id="tiles"></div>
+  </div>
+
+  <div class="card board">
+    <h2>Loudest right now</h2>
+    <div class="scroll">
       <table>
-        <thead><tr>
-          <th></th><th>ticker</th><th class="n">mentions</th><th class="n">24h change</th>
-          <th class="n">share of board</th><th class="n">rank move</th>
-        </tr></thead>
+        <thead><tr><th></th><th>ticker</th><th class="n">mentions</th>
+          <th class="n">24h</th><th class="n">move</th></tr></thead>
         <tbody id="now"></tbody>
       </table>
     </div>
-    <div class="cards" id="cards"></div>
-  </section>
-
-  <footer>
-    Derived statistics from the public <a href="https://apewisdom.io">ApeWisdom</a> boards,
-    read hourly by <a href="https://github.com/RezaSoleymanifar/ape-tape">ape-tape</a>. Posts are
-    not stored. Each row carries <code>known_at</code>, the time we read it. Unverified, may miss
-    hours, and is not investment advice.
-  </footer>
-
+  </div>
 </div>
 
-<script>
-const PALETTE = ['#f0b429','#3ddc84','#6ba4ff','#ff6b5e','#c792ea','#77cfc9','#e39ff6','#ffa94d'];
+<footer>
+  <details>
+    <summary>What this is</summary>
+    <p>ApeWisdom counts how often each <b>ticker</b> is mentioned and upvoted on nine finance
+    subreddits — all-stocks, all-crypto, wallstreetbets, stocks, cryptocurrency, options,
+    investing, stockmarket, pennystocks — and publishes only the current snapshot. This reads it
+    hourly and keeps what it read. It is not Reddit data: no posts, comments, users or topics are
+    exposed or stored. Ticker matching is theirs and unpublished, so common-word symbols
+    (<code>OPEN</code>, <code>IT</code>, <code>ALL</code>) and private companies do appear.
+    Each row carries <code>known_at</code>, the time we read it. Unverified, may miss hours,
+    not investment advice.
+    <a href="https://github.com/RezaSoleymanifar/ape-tape">Source</a> ·
+    <a href="https://apewisdom.io">ApeWisdom</a> ·
+    <a href="https://github.com/RezaSoleymanifar/vintage">Vintage</a></p>
+  </details>
+</footer>
 
-fetch('series.json?v=' + Date.now())
-  .then(r => r.json())
-  .then(render)
-  .catch(() => { document.getElementById('stamp').textContent = 'the tape could not be loaded'; });
+<script>
+const PALETTE = ['#f0b429','#3ddc84','#6ba4ff','#ff6b5e','#c792ea','#77cfc9','#ffa94d','#e39ff6'];
+const BOARD = 'all-stocks', CRYPTO = 'all-crypto';
+
+fetch('series.json?v=' + Date.now()).then(r => r.json()).then(render)
+  .catch(() => { document.getElementById('meta').textContent = 'tape unavailable'; });
 
 function render(data) {
-  const obs = data.observations || [];
+  const obs = (data.observations || [])
+    .filter(o => ((o.boards || {})[BOARD] || []).length > 0);
   if (!obs.length) return;
   const last = obs[obs.length - 1];
 
-  const hours = obs.length;
-  document.getElementById('stamp').innerHTML =
-    'last read <b>' + last.known_at.replace('T', ' ').replace('+00:00', ' UTC') + '</b>' +
-    ' &middot; ' + hours + ' observation' + (hours === 1 ? '' : 's') +
-    ' &middot; ' + (hours / 24).toFixed(1) + ' days recorded';
+  document.getElementById('meta').innerHTML =
+    '<span class="dot"></span>last read <b>' +
+    last.known_at.replace('T', ' ').replace('+00:00', ' UTC') + '</b>' +
+    ' &nbsp;·&nbsp; ' + obs.length + 'h recorded' +
+    ' &nbsp;·&nbsp; <a href="https://github.com/RezaSoleymanifar/ape-tape">source</a>';
 
   drawTicker(last);
-  drawNow(last);
-  drawCards(obs);
+  drawTiles(last);
+  drawBoard(last);
   drawBump(obs);
 }
 
 function drawTicker(last) {
-  const rows = [...(last.boards['all-stocks'] || []).slice(0, 14),
-                ...(last.boards['all-crypto'] || []).slice(0, 6)];
+  const rows = [...(last.boards[BOARD] || []).slice(0, 16),
+                ...(last.boards[CRYPTO] || []).slice(0, 8)];
   const html = rows.map(r => {
-    const d = r.delta_24h;
-    const cls = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
+    const d = r.delta_24h, c = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
     return `<span class="tick"><b>${r.ticker}</b> ${r.mentions.toLocaleString()} ` +
-           `<i class="${cls}">${d > 0 ? '▲' : (d < 0 ? '▼' : '•')}` +
-           `${Math.abs(d).toLocaleString()}</i></span>`;
+      `<span class="${c}">${d > 0 ? '▲' : (d < 0 ? '▼' : '·')}` +
+      `${Math.abs(d).toLocaleString()}</span></span>`;
   }).join('');
-  document.getElementById('run').innerHTML = html + html;   // doubled, so the loop is seamless
+  document.getElementById('run').innerHTML = html + html;
 }
 
-function drawNow(last) {
-  const rows = (last.boards['all-stocks'] || []).slice(0, 12);
-  document.getElementById('now').innerHTML = rows.map(r => {
+function drawTiles(last) {
+  const rows = last.boards[BOARD] || [];
+  const top = rows[0] || {};
+  const churn = last.churn && last.churn[BOARD];
+  const fresh = rows.filter(r => r.new_entry).length;
+  const conc = rows.slice(0, 3).reduce((a, r) => a + r.share, 0);
+  const mover = rows.slice().sort((a, b) => (b.delta_24h || 0) - (a.delta_24h || 0))[0] || {};
+  document.getElementById('tiles').innerHTML = `
+    <div class="tile wide"><b>${top.ticker || '—'}</b>
+      <span>loudest — ${((top.share || 0) * 100).toFixed(0)}% of every mention on the board</span></div>
+    <div class="tile"><b>${mover.ticker || '—'}</b>
+      <span>fastest riser, ${(mover.delta_24h || 0) > 0 ? '+' : ''}${(mover.delta_24h || 0).toLocaleString()} in 24h</span></div>
+    <div class="tile"><b>${(conc * 100).toFixed(0)}%</b>
+      <span>attention in the top three names</span></div>
+    <div class="tile"><b>${churn === undefined ? '—' : (churn * 100).toFixed(0) + '%'}</b>
+      <span>of the board turned over this hour</span></div>
+    <div class="tile"><b>${fresh}</b><span>names that were not here an hour ago</span></div>`;
+}
+
+function drawBoard(last) {
+  document.getElementById('now').innerHTML = (last.boards[BOARD] || []).slice(0, 25).map(r => {
     const d = r.delta_24h, mv = r.rank_change;
     const dc = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
     const mc = mv > 0 ? 'up' : (mv < 0 ? 'down' : 'dimc');
-    return `<tr>
-      <td class="dimc n">${r.rank}</td>
-      <td class="tk">${r.ticker}${r.new_entry ? '<span class="tag">new</span>' : ''}</td>
+    return `<tr><td class="dimc n">${r.rank}</td>
+      <td class="tk">${r.ticker}${r.new_entry ? '<span class="new">new</span>' : ''}</td>
       <td class="n">${r.mentions.toLocaleString()}</td>
       <td class="n ${dc}">${d > 0 ? '+' : ''}${d.toLocaleString()}</td>
-      <td class="n dimc">${(r.share * 100).toFixed(1)}%</td>
-      <td class="n ${mc}">${mv === null || mv === undefined ? '—' : (mv > 0 ? '+' + mv : mv)}</td>
-    </tr>`;
+      <td class="n ${mc}">${mv === null || mv === undefined ? '—' : (mv > 0 ? '+' + mv : mv)}</td></tr>`;
   }).join('');
-}
-
-function drawCards(obs) {
-  const last = obs[obs.length - 1];
-  const rows = last.boards['all-stocks'] || [];
-  const top = rows[0] || {};
-  const churn = (last.churn && last.churn['all-stocks']);
-  const fresh = rows.filter(r => r.new_entry).length;
-  const concentration = rows.slice(0, 3).reduce((a, r) => a + r.share, 0);
-  document.getElementById('cards').innerHTML = `
-    <div class="card"><b>${top.ticker || '—'}</b><span>loudest ticker,
-      ${((top.share || 0) * 100).toFixed(0)}% of all mentions on the board</span></div>
-    <div class="card"><b>${churn === undefined ? '—' : (churn * 100).toFixed(0) + '%'}</b>
-      <span>of the board turned over since the last reading${fresh ? ' — ' + fresh + ' new' : ''}</span></div>
-    <div class="card"><b>${(concentration * 100).toFixed(0)}%</b>
-      <span>of attention sits in the top three names</span></div>`;
 }
 
 function drawBump(obs) {
   const svg = document.getElementById('bump');
   if (obs.length < 2) {
-    svg.style.display = 'none';           // an empty frame reads as a broken chart
+    svg.style.display = 'none';
     document.getElementById('bump-empty').hidden = false;
     return;
   }
-  const W = 1100, H = 420, L = 46, R = 120, T = 18, B = 30;
-  const DEPTH = 8;
-
-  // Track whoever reached the top eight at any point in the window.
+  const W = 1000, H = 460, L = 34, R = 108, T = 14, B = 26, DEPTH = 10;
   const tracked = new Set();
-  obs.forEach(o => (o.boards['all-stocks'] || []).slice(0, DEPTH).forEach(r => tracked.add(r.ticker)));
+  obs.forEach(o => (o.boards[BOARD] || []).slice(0, DEPTH).forEach(r => tracked.add(r.ticker)));
 
-  const x = i => L + (W - L - R) * (obs.length === 1 ? 0 : i / (obs.length - 1));
+  const x = i => L + (W - L - R) * (i / (obs.length - 1));
   const y = rank => T + (H - T - B) * ((rank - 1) / (DEPTH - 1));
 
   let out = '';
   for (let k = 1; k <= DEPTH; k++) {
-    out += `<line class="grid" x1="${L}" y1="${y(k)}" x2="${W - R}" y2="${y(k)}"/>`;
-    out += `<text class="axis" x="${L - 10}" y="${y(k) + 3}" text-anchor="end">${k}</text>`;
+    out += `<line class="grid-line" x1="${L}" y1="${y(k)}" x2="${W - R}" y2="${y(k)}"/>` +
+           `<text class="axis" x="${L - 8}" y="${y(k) + 3}" text-anchor="end">${k}</text>`;
   }
-
   [...tracked].forEach((ticker, idx) => {
     const colour = PALETTE[idx % PALETTE.length];
     const pts = [];
     obs.forEach((o, i) => {
-      const hit = (o.boards['all-stocks'] || []).find(r => r.ticker === ticker);
-      if (hit && hit.rank <= DEPTH) pts.push([x(i), y(hit.rank), i]);
+      const hit = (o.boards[BOARD] || []).find(r => r.ticker === ticker);
+      if (hit && hit.rank <= DEPTH) pts.push([x(i), y(hit.rank)]);
     });
     if (pts.length < 2) return;
-    const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
-    out += `<path class="bump-line" d="${d}" stroke="${colour}"/>`;
-    const end = pts[pts.length - 1];
-    out += `<circle class="bump-dot" cx="${end[0]}" cy="${end[1]}" r="3.5" fill="${colour}"/>`;
-    if (end[0] > W - R - 20) {
-      out += `<text class="bump-label" x="${W - R + 10}" y="${end[1] + 4}" fill="${colour}">${ticker}</text>`;
+    out += `<path class="bump-line" stroke="${colour}" d="${
+      pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ')}"/>`;
+    const e = pts[pts.length - 1];
+    out += `<circle class="bump-dot" cx="${e[0]}" cy="${e[1]}" r="3.6" fill="${colour}"/>`;
+    if (e[0] > W - R - 24) {
+      out += `<text class="bump-label" x="${W - R + 9}" y="${e[1] + 4}" fill="${colour}">${ticker}</text>`;
     }
   });
-
-  const first = obs[0].known_at.slice(5, 16).replace('T', ' ');
-  const lastT = obs[obs.length - 1].known_at.slice(5, 16).replace('T', ' ');
-  out += `<text class="axis" x="${L}" y="${H - 6}">${first}</text>`;
-  out += `<text class="axis" x="${W - R}" y="${H - 6}" text-anchor="end">${lastT}</text>`;
+  out += `<text class="axis" x="${L}" y="${H - 5}">${obs[0].known_at.slice(5, 16).replace('T', ' ')}</text>`;
+  out += `<text class="axis" x="${W - R}" y="${H - 5}" text-anchor="end">${
+    obs[obs.length - 1].known_at.slice(5, 16).replace('T', ' ')}</text>`;
   svg.innerHTML = out;
 }
 </script>
