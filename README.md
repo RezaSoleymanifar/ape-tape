@@ -6,11 +6,18 @@ An hourly record of the [ApeWisdom](https://apewisdom.io) boards.
 
 ## What it is
 
-ApeWisdom publishes the current snapshot and nothing else — no history endpoint.
-This reads it every hour and keeps what it read, so a time series exists.
+ApeWisdom counts how often each **ticker** is mentioned and upvoted on nine
+finance subreddits, and publishes only the current snapshot — no history
+endpoint. This reads it hourly and keeps what it read, so a series exists.
 
-That is the whole thing. It is metadata about Reddit mention counts, recorded on
-a schedule.
+It is not Reddit data. There are no posts, comments, users, subreddit
+statistics or topics, and none are stored. Ticker matching is ApeWisdom's and
+their method is unpublished, so common-word symbols (`OPEN`, `IT`, `ALL`) and
+private companies do appear in the counts.
+
+Boards recorded: `all-stocks`, `all-crypto`, `wallstreetbets`, `stocks`,
+`cryptocurrency`, `options`, `investing`, `stockmarket`, `pennystocks` —
+top 100 of each, hourly.
 
 ## What is stored
 
@@ -40,9 +47,14 @@ GitHub Actions runs it hourly and commits the result. About 18MB a year.
 
 ```
 collect.py            the recorder
-data/tape.jsonl       append-only, one observation per line
+data/raw/…            the responses as received, gzipped, one file per hour
+data/tape.jsonl       derived statistics, one line per reading
 docs/                 the page, plus the JSON it reads
 ```
+
+Raw is kept because a derived series can be rebuilt from raw and raw can never
+be rebuilt from derived. If the delta formula here is wrong, or the API gains a
+field, recomputation is only possible if the original bytes survived.
 
 ## Terms
 

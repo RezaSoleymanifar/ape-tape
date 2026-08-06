@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ape-tape — an hourly record of the ApeWisdom boards</title>
 <meta name="description" content="An hourly record of the ApeWisdom Reddit mention boards. They publish only the current snapshot, so this keeps the history.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230b0d11'/><path d='M4 20h4l3-9 4 14 4-11 3 6h6' stroke='%23f0b429' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='15' fill='%23151109'/><circle cx='12' cy='26' r='8' fill='%23f0b429'/><circle cx='52' cy='26' r='8' fill='%23f0b429'/><path d='M32 8c11.6 0 18 8.4 18 19 0 12.8-8 24-18 24s-18-11.2-18-24C14 16.4 20.4 8 32 8Z' fill='%23f0b429'/><ellipse cx='32' cy='40' rx='12.5' ry='10.5' fill='%238a5a12'/><path d='M13 24.5h38v7.5a3 3 0 0 1-3 3H16a3 3 0 0 1-3-3Z' fill='%230b0d11'/><rect x='15.5' y='26.4' width='14' height='6.4' rx='2' fill='%23f0b429'/><rect x='34.5' y='26.4' width='14' height='6.4' rx='2' fill='%23f0b429'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
@@ -22,7 +22,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
 a{color:var(--hot)}
 .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
 header{padding:64px 0 28px}
-h1{font-size:clamp(34px,6vw,60px);font-weight:800;letter-spacing:-.035em;margin:0 0 14px;line-height:1}
+h1{font-size:clamp(34px,6vw,60px);font-weight:800;letter-spacing:-.035em;margin:0 0 14px;
+  line-height:1;display:flex;align-items:center;gap:16px}
+.logo{width:.95em;height:.95em;flex:none}
 h1 span{color:var(--hot)}
 .lede{color:var(--dim);font-size:18px;max-width:44em;margin:0}
 .lede b{color:var(--ink);font-weight:600}
@@ -69,6 +71,13 @@ th.n{text-align:right}
 .tag{font-family:var(--mono);font-size:10px;border:1px solid var(--hot);color:var(--hot);
   border-radius:4px;padding:1px 6px;margin-left:7px}
 
+.what{display:grid;grid-template-columns:1fr;gap:14px;margin-top:20px}
+@media(min-width:820px){.what{grid-template-columns:repeat(3,1fr)}}
+.what div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+.what h3{margin:0 0 8px;font-size:14px;font-weight:600}
+.what p{margin:0;color:var(--dim);font-size:14px;line-height:1.6}
+.what b{color:var(--ink);font-weight:600}
+.what code{font-family:var(--mono);font-size:12.5px;color:var(--hot)}
 .cards{display:grid;grid-template-columns:1fr;gap:14px;margin-top:20px}
 @media(min-width:760px){.cards{grid-template-columns:repeat(3,1fr)}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
@@ -83,13 +92,65 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:13px;padding:
 <div class="wrap">
 
   <header>
-    <h1>ape&#8209;<span>tape</span></h1>
+    <h1><svg class="logo" viewBox="0 0 64 64" role="img" aria-label="ape-tape">
+      <defs>
+        <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffd75e"/><stop offset="1" stop-color="#e09a12"/>
+        </linearGradient>
+        <linearGradient id="muz" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8a5a12"/><stop offset="1" stop-color="#6b4310"/>
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="15" fill="#151109"/>
+      <circle cx="12" cy="26" r="8" fill="url(#fur)"/><circle cx="12" cy="26" r="3.6" fill="#8a5a12"/>
+      <circle cx="52" cy="26" r="8" fill="url(#fur)"/><circle cx="52" cy="26" r="3.6" fill="#8a5a12"/>
+      <path d="M32 8c11.6 0 18 8.4 18 19 0 12.8-8 24-18 24s-18-11.2-18-24C14 16.4 20.4 8 32 8Z"
+            fill="url(#fur)"/>
+      <ellipse cx="32" cy="40" rx="12.5" ry="10.5" fill="url(#muz)"/>
+      <ellipse cx="28.2" cy="37.4" rx="1.7" ry="2.2" fill="#2a1a05"/>
+      <ellipse cx="35.8" cy="37.4" rx="1.7" ry="2.2" fill="#2a1a05"/>
+      <path d="M26 44.6c3 2.6 9 2.6 12 0" stroke="#2a1a05" stroke-width="2.3"
+            fill="none" stroke-linecap="round"/>
+      <path d="M13 24.5h38v7.5a3 3 0 0 1-3 3H16a3 3 0 0 1-3-3Z" fill="#0b0d11"/>
+      <rect x="15.5" y="26.4" width="14" height="6.4" rx="2" fill="#f0b429" opacity="0.92"/>
+      <rect x="34.5" y="26.4" width="14" height="6.4" rx="2" fill="#f0b429" opacity="0.92"/>
+      <path d="M17 32.4 22 26.4M36 32.4 41 26.4" stroke="#fff6d8" stroke-width="1.5"
+            opacity="0.5" stroke-linecap="round"/>
+      <path d="M24 12c3-2.6 13-2.6 16 0" stroke="#fff2c4" stroke-width="1.6" fill="none"
+            opacity="0.35" stroke-linecap="round"/>
+    </svg>ape&#8209;<span>tape</span></h1>
     <p class="lede">An hourly record of the <a href="https://apewisdom.io">ApeWisdom</a> boards.
     They publish the current snapshot and no history, so this reads it every hour and keeps what
     it read. Metadata about Reddit mention counts, on a schedule.</p>
     <p class="stamp" id="stamp">loading the tape&hellip;</p>
     <div class="ticker" aria-hidden="true"><div class="ticker-run" id="run"></div></div>
   </header>
+
+  <section>
+    <h2>What this is, exactly</h2>
+    <div class="what">
+      <div>
+        <h3>What ApeWisdom counts</h3>
+        <p>How often each <b>ticker</b> is mentioned and upvoted on nine finance subreddits:
+        all-stocks, all-crypto, wallstreetbets, stocks, cryptocurrency, options, investing,
+        stockmarket, pennystocks. Seven numbers per ticker &mdash; rank, mentions, upvotes, and
+        the same figures from 24 hours ago.</p>
+      </div>
+      <div>
+        <h3>What it is not</h3>
+        <p>Not Reddit data. There are <b>no posts, comments, users, subreddit statistics or
+        topics</b> here, and none are stored. A symbol nobody names is invisible, and a thread
+        with a thousand comments about the market that mentions no ticker does not exist to it.</p>
+      </div>
+      <div>
+        <h3>Who matched the tickers</h3>
+        <p>They did, and the method is unpublished. Common-word symbols like <code>OPEN</code>,
+        <code>IT</code> and <code>ALL</code>, and private companies like <code>SPCX</code>, do
+        appear. We record what the board said rather than correcting it, because a correction we
+        invented would be the thing you could not audit later.</p>
+      </div>
+    </div>
+  </section>
 
   <section>
     <h2>How the crowd moves</h2>
@@ -102,7 +163,8 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:13px;padding:
 
   <section>
     <h2>Right now</h2>
-    <p class="sub">The latest reading.</p>
+    <p class="sub">The latest reading. Tickers are attributed by ApeWisdom, not by us &mdash;
+    their matching is unpublished, so common-word symbols and private companies do slip in.</p>
     <div class="panel">
       <table>
         <thead><tr>
@@ -150,8 +212,8 @@ function render(data) {
 }
 
 function drawTicker(last) {
-  const rows = [...(last.boards.stocks || []).slice(0, 14),
-                ...(last.boards.crypto || []).slice(0, 6)];
+  const rows = [...(last.boards['all-stocks'] || []).slice(0, 14),
+                ...(last.boards['all-crypto'] || []).slice(0, 6)];
   const html = rows.map(r => {
     const d = r.delta_24h;
     const cls = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
@@ -163,7 +225,7 @@ function drawTicker(last) {
 }
 
 function drawNow(last) {
-  const rows = (last.boards.stocks || []).slice(0, 12);
+  const rows = (last.boards['all-stocks'] || []).slice(0, 12);
   document.getElementById('now').innerHTML = rows.map(r => {
     const d = r.delta_24h, mv = r.rank_change;
     const dc = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
@@ -181,9 +243,9 @@ function drawNow(last) {
 
 function drawCards(obs) {
   const last = obs[obs.length - 1];
-  const rows = last.boards.stocks || [];
+  const rows = last.boards['all-stocks'] || [];
   const top = rows[0] || {};
-  const churn = (last.churn && last.churn.stocks);
+  const churn = (last.churn && last.churn['all-stocks']);
   const fresh = rows.filter(r => r.new_entry).length;
   const concentration = rows.slice(0, 3).reduce((a, r) => a + r.share, 0);
   document.getElementById('cards').innerHTML = `
@@ -207,7 +269,7 @@ function drawBump(obs) {
 
   // Track whoever reached the top eight at any point in the window.
   const tracked = new Set();
-  obs.forEach(o => (o.boards.stocks || []).slice(0, DEPTH).forEach(r => tracked.add(r.ticker)));
+  obs.forEach(o => (o.boards['all-stocks'] || []).slice(0, DEPTH).forEach(r => tracked.add(r.ticker)));
 
   const x = i => L + (W - L - R) * (obs.length === 1 ? 0 : i / (obs.length - 1));
   const y = rank => T + (H - T - B) * ((rank - 1) / (DEPTH - 1));
@@ -222,7 +284,7 @@ function drawBump(obs) {
     const colour = PALETTE[idx % PALETTE.length];
     const pts = [];
     obs.forEach((o, i) => {
-      const hit = (o.boards.stocks || []).find(r => r.ticker === ticker);
+      const hit = (o.boards['all-stocks'] || []).find(r => r.ticker === ticker);
       if (hit && hit.rank <= DEPTH) pts.push([x(i), y(hit.rank), i]);
     });
     if (pts.length < 2) return;
