@@ -1,0 +1,47 @@
+name: collect
+
+# Once an hour, forever. Each run appends one observation and commits it, so
+# the git history *is* the provenance — you can prove when a number was
+# recorded because the commit is timestamped by someone other than us.
+#
+# Runs on GitHub's hosted runners, which are free without limit on public
+# repositories. The whole job is a few seconds and a few kilobytes.
+
+on:
+  schedule:
+    - cron: "7 * * * *"        # seven past, to stay off the crowded top of the hour
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: collect
+  cancel-in-progress: false     # never drop an observation to start a newer one
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet httpx
+
+      - name: Read the boards
+        run: python collect.py
+
+      - name: Commit the observation
+        run: |
+          git config user.name  "crowd-tape"
+          git config user.email "actions@github.com"
+          git add data/tape.jsonl docs/latest.json docs/series.json
+          if git diff --cached --quiet; then
+            echo "nothing changed — the feed returned the same numbers"
+            exit 0
+          fi
+          git commit -m "tape: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
