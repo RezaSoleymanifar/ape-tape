@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>crowd-tape — a recording of what the forums are saying</title>
-<meta name="description" content="An hourly, point-in-time recording of retail forum attention. No history exists upstream, so this one starts the day it was begun and is never back-filled.">
+<title>ape-tape — an hourly record of the ApeWisdom boards</title>
+<meta name="description" content="An hourly record of the ApeWisdom Reddit mention boards. They publish only the current snapshot, so this keeps the history.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230b0d11'/><path d='M4 20h4l3-9 4 14 4-11 3 6h6' stroke='%23f0b429' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,30 +70,25 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:13px;padding:
 <div class="wrap">
 
   <header>
-    <h1>crowd&#8209;<span>tape</span></h1>
-    <p class="lede">An hourly recording of what retail forums are talking about.
-    The source publishes <b>only the present</b> — there is no history endpoint, and anyone
-    selling you years of it re-scored old posts with today's model. So this tape starts the
-    hour it was begun, is <b>never back-filled</b>, and every row carries the minute we read it.</p>
+    <h1>ape&#8209;<span>tape</span></h1>
+    <p class="lede">An hourly record of the <a href="https://apewisdom.io">ApeWisdom</a> boards.
+    They publish the current snapshot and no history, so this reads it every hour and keeps what
+    it read. Metadata about Reddit mention counts, on a schedule.</p>
     <p class="stamp" id="stamp">loading the tape&hellip;</p>
   </header>
 
   <section>
     <h2>How the crowd moves</h2>
-    <p class="sub">Rank of the loudest tickers, hour by hour. Lines that dive are attention
-    arriving; lines that climb are a story going quiet. This is the view that cannot be
-    reconstructed after the fact — it exists only because someone was recording.</p>
+    <p class="sub">Board rank, hour by hour. Down is climbing the board.</p>
     <div class="panel">
       <svg id="bump" viewBox="0 0 1100 420" role="img" aria-label="Ticker rank over time"></svg>
-      <p class="empty" id="bump-empty" hidden>The tape needs a few hours before it can draw a
-        line. Come back later — that is the point of it.</p>
+      <p class="empty" id="bump-empty" hidden>Not enough readings yet to draw a line.</p>
     </div>
   </section>
 
   <section>
     <h2>Right now</h2>
-    <p class="sub">The latest reading, with the numbers that need a memory: how far a ticker moved
-    since the last hour, and whether it was on the board at all.</p>
+    <p class="sub">The latest reading.</p>
     <div class="panel">
       <table>
         <thead><tr>
@@ -107,13 +102,10 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:13px;padding:
   </section>
 
   <footer>
-    Statistics computed from the public ApeWisdom board and recorded hourly by
-    <a href="https://github.com/RezaSoleymanifar/crowd-tape">crowd-tape</a>. The stored series is
-    derived — ranks, deltas, velocities, churn — not a copy of anyone's table.
-    Every observation is stamped <code>known_at</code>: the minute it was read, not the minute the
-    posts were written. Built to be joined against
-    <a href="https://github.com/RezaSoleymanifar/vintage">Vintage</a>, where that stamp is the index.
-    Nothing here is investment advice.
+    Derived statistics from the public <a href="https://apewisdom.io">ApeWisdom</a> boards,
+    read hourly by <a href="https://github.com/RezaSoleymanifar/ape-tape">ape-tape</a>. Posts are
+    not stored. Each row carries <code>known_at</code>, the time we read it. Unverified, may miss
+    hours, and is not investment advice.
   </footer>
 
 </div>

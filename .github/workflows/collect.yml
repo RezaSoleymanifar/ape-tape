@@ -1,11 +1,8 @@
 name: collect
 
-# Once an hour, forever. Each run appends one observation and commits it, so
-# the git history *is* the provenance — you can prove when a number was
-# recorded because the commit is timestamped by someone other than us.
-#
-# Runs on GitHub's hosted runners, which are free without limit on public
-# repositories. The whole job is a few seconds and a few kilobytes.
+# Hourly. Each run appends one observation and commits it, so the commit
+# timestamp records when the reading happened. Free on public repositories;
+# the job is a few seconds and a few kilobytes.
 
 on:
   schedule:
@@ -36,7 +33,7 @@ jobs:
 
       - name: Commit the observation
         run: |
-          git config user.name  "crowd-tape"
+          git config user.name  "ape-tape"
           git config user.email "actions@github.com"
           git add data/tape.jsonl docs/latest.json docs/series.json
           if git diff --cached --quiet; then

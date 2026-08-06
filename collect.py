@@ -1,18 +1,14 @@
-"""Record what the forums are saying, once an hour, and never revise it.
+"""Read the ApeWisdom boards and append what they said.
 
-ApeWisdom publishes the present and nothing else — no history endpoint, no way
-to ask what last Tuesday looked like. That is the whole opportunity. A series
-nobody can back-fill is a series that has to be recorded, and the recording
-starts the day someone begins.
+ApeWisdom publishes the current snapshot with no history endpoint, so a time
+series only exists if something records one. This does that, hourly.
 
-What lands on disk is derived statistics, not their table: rank, mention
-counts, the deltas and velocities we compute, and the flags that need a memory
-of yesterday to exist at all. Numbers we calculated are ours to publish; their
-rows are not, and the API states no redistribution terms either way.
+Stored are numbers computed from the board — ranks, deltas, share, movement,
+churn — rather than copies of their rows, since the API states no
+redistribution terms. Posts are not stored.
 
-Every observation carries `known_at` — the minute we read it, not the minute
-the posts were written. That is the only honest stamp for a source with no
-history, and it is what lets this series survive a point-in-time backtest.
+Each observation carries `known_at`: when we read it, not when the posts were
+written.
 
     python collect.py                 # append one observation
     python collect.py --dry-run       # print it, write nothing
@@ -45,13 +41,13 @@ KEEP_HOURS = 24 * 90            # the site reads a rolling quarter
 
 
 def fetch(url: str, client: httpx.Client) -> list[dict]:
-    r = client.get(url, timeout=45, headers={"User-Agent": "crowd-tape (github)"})
+    r = client.get(url, timeout=45, headers={"User-Agent": "ape-tape (github)"})
     r.raise_for_status()
     return r.json().get("results", [])[:DEPTH]
 
 
 def observe(client: httpx.Client) -> dict:
-    """One reading of every board, reduced to numbers we computed ourselves."""
+    """One reading of each board, reduced to numbers we computed."""
     known_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     boards: dict[str, list[dict]] = {}
 
@@ -79,8 +75,8 @@ def observe(client: httpx.Client) -> dict:
 
 
 def enrich(obs: dict, previous: dict | None) -> dict:
-    """The fields that only exist because we kept yesterday: rank movement,
-    first appearances, and how much of the board turned over."""
+    """Fields that need the previous reading: rank movement, first appearance,
+    and how much of the board turned over."""
     for board, rows in obs["boards"].items():
         prev_rows = {r["ticker"]: r for r in (previous or {}).get("boards", {}).get(board, [])}
         seen_before = set(prev_rows)
@@ -135,8 +131,7 @@ def main() -> None:
         fh.write(json.dumps(obs, separators=(",", ":")) + "\n")
     tape.append(obs)
     write_site(tape)
-    print(f"tape now {len(tape)} observations "
-          f"({(len(tape) / 24):.1f} days of recorded attention)")
+    print(f"tape now {len(tape)} observations ({(len(tape) / 24):.1f} days)")
 
 
 if __name__ == "__main__":

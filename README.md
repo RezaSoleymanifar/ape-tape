@@ -1,40 +1,34 @@
-# crowd-tape
+# ape-tape
 
-An hourly recording of what retail forums are talking about, stamped with the
-minute it was read and never revised.
+An hourly record of the [ApeWisdom](https://apewisdom.io) boards.
 
-**[See the tape →](https://rezasoleymanifar.github.io/crowd-tape/)**
+**[The tape →](https://rezasoleymanifar.github.io/ape-tape/)**
 
-## Why this exists
+## What it is
 
-The source publishes only the present. There is no history endpoint, no archive,
-no way to ask what last Tuesday's board looked like — and anyone selling years of
-"historical sentiment" built it by re-scoring old posts with today's model, which
-is a look-ahead machine wearing a timestamp.
+ApeWisdom publishes the current snapshot and nothing else — no history endpoint.
+This reads it every hour and keeps what it read, so a time series exists.
 
-So the history has to be recorded rather than bought. This repository starts the
-hour it was begun and grows one observation at a time. That is the entire moat:
-in a year it will hold something nobody can reconstruct, including someone with
-more money.
+That is the whole thing. It is metadata about Reddit mention counts, recorded on
+a schedule.
 
 ## What is stored
 
-Statistics we computed, not anyone else's table:
+Numbers we computed from the board, not the board itself:
 
 | Field | Meaning |
 |---|---|
-| `rank`, `mentions`, `upvotes` | the board position at the moment of reading |
-| `delta_24h`, `growth_24h` | how fast attention is arriving, not how much sits there |
-| `share` | the ticker's slice of the whole board, comparable across days |
-| `rank_change` | movement since the previous hour — exists only because we kept it |
-| `new_entry` | first appearance on the board in this recording |
-| `churn` | what fraction of the board turned over since the last reading |
+| `rank`, `mentions`, `upvotes` | board position when we read it |
+| `delta_24h`, `growth_24h` | change against the 24h-ago figure the API returns |
+| `share` | the ticker's fraction of the board's mentions |
+| `rank_change` | movement since our previous reading |
+| `new_entry` | not on the board an hour ago |
+| `churn` | fraction of the board that turned over |
 
-Every observation carries `known_at`: the minute we read it, **not** the minute
-the posts were written. For a source with no history that is the only honest
-stamp, and it is what lets this series survive a point-in-time backtest.
+Every row carries `known_at` — when we read it, not when the posts were written.
+The posts themselves are not stored.
 
-## How it runs
+## Running it
 
 ```bash
 pip install httpx
@@ -42,36 +36,25 @@ python collect.py              # append one observation
 python collect.py --dry-run    # print it, write nothing
 ```
 
-A GitHub Actions cron runs it hourly and commits the result. The git history is
-the provenance: you can prove when a number was recorded because the commit is
-timestamped by someone other than us.
-
-No servers, no S3, no AWS bill. The volume is roughly 18MB a year, which git
-handles without noticing.
-
-## Layout
+GitHub Actions runs it hourly and commits the result. About 18MB a year.
 
 ```
-collect.py                 the recorder
-data/tape.jsonl            append-only, one observation per line
-docs/index.html            the one-page view
-docs/series.json           a rolling 90-day window the page reads
-docs/latest.json           the most recent reading
-.github/workflows/         hourly cron
+collect.py            the recorder
+data/tape.jsonl       append-only, one observation per line
+docs/                 the page, plus the JSON it reads
 ```
 
 ## Terms
 
-The upstream API states no licence, rate limit, or redistribution policy — only a
-privacy page and a contact address. Silence is not permission, so this repository
-publishes **derived statistics** rather than a copy of their rows, and credits
-the source on every page.
+ApeWisdom's API page states no licence or redistribution policy, so this stores
+derived statistics rather than copies of their rows, and credits them.
+
+Data is unverified and may be wrong, missing hours, or reflect whatever the API
+returned at the time. Not investment advice.
 
 ## Related
 
-- [Vintage](https://github.com/RezaSoleymanifar/vintage) — point-in-time market
-  data behind six verbs, where `known_at` is the index this tape is built to join.
-- [Alpha Archive](https://github.com/RezaSoleymanifar/alpha-archive) — quant
-  papers reproduced on that data.
+[Vintage](https://github.com/RezaSoleymanifar/vintage) — point-in-time market
+data, where `known_at` is the index this joins against.
 
-MIT licensed. Nothing here is investment advice.
+MIT licensed.
