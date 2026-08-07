@@ -122,15 +122,15 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;
 .stamp .sub{display:block;color:var(--dim);font-size:10.5px}
 
 /* ------------------------------------------------------------------- grid */
+.rail{display:flex;flex-direction:column;gap:12px;min-width:0}
 .grid{flex:1;display:grid;gap:12px;padding:12px 20px 18px;
   grid-template-columns:minmax(0,1fr);align-content:start}
 @media(min-width:1080px){
   .grid{grid-template-columns:minmax(0,2.15fr) minmax(0,1fr);
-    grid-template-rows:auto auto}
+    grid-template-rows:auto auto;align-items:start}
   .c-map{grid-column:1;grid-row:1}
   .c-focus{grid-column:1;grid-row:2}
-  .c-moment{grid-column:2;grid-row:1}
-  .c-table{grid-column:2;grid-row:2;min-height:0}
+  .rail{grid-column:2;grid-row:1 / span 2}
 }
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
   padding:14px 16px;min-width:0}
@@ -203,6 +203,8 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;
   stroke-linejoin:round}
 .ln-area{fill:var(--focus);opacity:.13;stroke:none}
 .ln-usual{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 4}
+.ln-off{stroke:var(--muted);stroke-width:2.5;stroke-dasharray:2 3;opacity:.75;
+  stroke-linecap:round}
 .ln-head{stroke:var(--brand);stroke-width:1.5}
 .axis{font-family:var(--mono);font-size:9.5px;fill:var(--muted)}
 .gridline{stroke:var(--line);stroke-width:1}
@@ -308,8 +310,6 @@ footer p{margin:8px 0 0;max-width:78em}
 
   <section class="card c-map" aria-labelledby="map-h">
     <h2 id="map-h">The evolution of attention</h2>
-    <p class="hint" id="map-hint">Each row is a ticker, each column an hour.
-      Brighter is a larger share of everything the board said.</p>
     <div class="picks" id="boards" role="group" aria-label="Board"></div>
     <div class="picks small" id="ranges" role="group" aria-label="Time range"></div>
     <div class="hm" id="hm"></div>
@@ -331,9 +331,11 @@ footer p{margin:8px 0 0;max-width:78em}
     <svg id="line" viewBox="0 0 1000 240" role="img" aria-labelledby="focus-h"
       aria-describedby="focus-alt"></svg>
     <p class="sr" id="focus-alt"></p>
+    <p class="hint" id="focus-note" style="margin:9px 0 0"></p>
     <p class="empty" id="focus-empty" hidden></p>
   </section>
 
+  <div class="rail">
   <aside class="card c-moment" aria-labelledby="moment-h">
     <h2 id="moment-h">At this moment</h2>
     <p class="hint" id="moment-hint"></p>
@@ -353,6 +355,7 @@ footer p{margin:8px 0 0;max-width:78em}
       </table>
     </div>
   </aside>
+  </div>
 
 </div>
 
@@ -365,20 +368,12 @@ footer p{margin:8px 0 0;max-width:78em}
   Not investment advice.</p>
   <details>
     <summary>What this is</summary>
-    <p>ApeWisdom counts how often each <b>ticker</b> is mentioned and upvoted across nine
-    boards: seven subreddits (wallstreetbets, stocks, cryptocurrency, options,
-    investing, stockmarket, pennystocks) and two of their own aggregates
-    (all-stocks, all-crypto), which cover more subreddits than those seven. They
-    publish only the current snapshot. This reads every board on the hour and keeps
-    what it read, so a history exists. Hours do get missed, and the header counts
-    them rather than hiding them. It is not Reddit data: no posts, comments, users or topics are
-    exposed or stored. Ticker matching is theirs and unpublished, so common-word
-    symbols (<code>OPEN</code>, <code>IT</code>, <code>ALL</code>) and private
-    companies do appear. Every reading carries <code>known_at</code>, the hour we
-    read it, not the hour anything was written, and it covers every row in that
-    reading. Share is a ticker&rsquo;s fraction
-    of the mentions across the hundred names kept per board, so it says how much of
-    the room a name is taking rather than how loud the room is. Unverified, may miss
+    <p>Nine Reddit finance boards, counted by ticker, read every hour and kept.
+    No posts, comments or users are stored. Ticker matching is
+    <a href="https://apewisdom.io">ApeWisdom</a>&rsquo;s and unpublished, so
+    common words (<code>OPEN</code>, <code>IT</code>) and private companies do
+    appear. Share is a name&rsquo;s fraction of the hundred kept per board, and
+    every figure is stamped with the hour it was read. Unverified, may miss
     hours, not investment advice.
     <a href="https://github.com/RezaSoleymanifar/ape-tape">Source</a> &middot;
     <a href="https://apewisdom.io">ApeWisdom</a> &middot;
@@ -594,7 +589,6 @@ function boot() {
     const at = w.length ? ms(w[Math.min(head, w.length - 1)].t) : null;
     document.querySelectorAll('[data-board]').forEach(n =>
       n.setAttribute('aria-pressed', String(n.dataset.board === next)));
-    $('map-hint').textContent = 'Loading ' + (LABEL[next] || next) + '…';
     loadBoard(next).then(() => {
       board = next;
       picked = null;                 // the old name means nothing on a new board
@@ -913,14 +907,17 @@ function drawMap(w, at, rowsNow) {
 
   hm.innerHTML = html;
 
-  // At most six time labels, always including the newest column.
+  // At most six time labels, always including the newest column. They carry the
+  // date once the window is longer than a day and a half, because past that
+  // "14:07" appears twice and means two different days.
+  const spanDays = (ms(w[w.length - 1].t) - ms(w[0].t)) > 36 * 3600000;
   const every = Math.max(1, Math.ceil(n / 6));
   let xs = '<div></div>';
   for (let i = 0; i < n; i++) {
     const show = (n - 1 - i) % every === 0;
     const t = lay.t0 + i * lay.step;
     xs += '<span>' + (show
-      ? esc(stampUTC(t, lay.stepH >= 24).replace(' UTC', '')) : '') + '</span>';
+      ? esc(stampUTC(t, spanDays).replace(' UTC', '')) : '') + '</span>';
   }
   hmx.innerHTML = xs;
 
@@ -931,11 +928,6 @@ function drawMap(w, at, rowsNow) {
       : 'one column per ' + lay.stepH + ' hours, showing its last reading') +
     (missing ? ' · ' + missing + ' column' + (missing === 1 ? '' : 's') +
       ' with nothing recorded' : '');
-  $('map-hint').textContent =
-    'Each row is a ticker, each column ' +
-    (lay.stepH === 1 ? 'one hour' : lay.stepH + ' hours') +
-    '. Brighter is a larger share of everything the board said. Click a column ' +
-    'to travel there, or a name to open it below.';
   hm.setAttribute('role', 'img');
   hm.setAttribute('aria-label', rowTickers.length + ' tickers across ' + n +
     ' time columns on ' + (LABEL[board] || board) +
@@ -993,7 +985,7 @@ function drawFocus(w, at) {
   if (!picked) {
     svg.style.display = 'none'; empty.hidden = false;
     empty.textContent = 'No ticker to open.'; title.innerHTML = '';
-    $('focus-alt').textContent = ''; return;
+    $('focus-alt').textContent = ''; $('focus-note').textContent = ''; return;
   }
 
   const pts = w.map(o => ({ t: ms(o.t), v: shareOf(o, picked) }));
@@ -1029,6 +1021,7 @@ function drawFocus(w, at) {
       ? picked + ' appears in one reading of this range. A line needs two.'
       : picked + ' does not appear in this range.';
     $('focus-alt').textContent = '';
+    $('focus-note').textContent = '';
     return;
   }
   svg.style.display = ''; empty.hidden = true;
@@ -1085,12 +1078,30 @@ function drawFocus(w, at) {
   close(pts[pts.length - 1].v !== null ? pts[pts.length - 1].t : t1);
   out += '<path class="ln-area" d="' + area + '"/><path class="ln" d="' + d + '"/>';
 
+  /* Stretches where the name was off the board. Not missing: we know it sat
+     below the cut, which is a smaller number than anything drawn here, so it
+     goes on the floor rather than nowhere. */
+  let offFrom = null, offRuns = 0;
+  for (let i = 0; i <= pts.length; i++) {
+    const absent = i < pts.length && pts[i].v === null;
+    if (absent && offFrom === null) offFrom = i;
+    if (!absent && offFrom !== null) {
+      const a = x(pts[offFrom].t), b = x(pts[i - 1].t);
+      out += '<line class="ln-off" x1="' + a.toFixed(1) + '" y1="' + y(0).toFixed(1) +
+        '" x2="' + Math.max(b, a + 1).toFixed(1) + '" y2="' + y(0).toFixed(1) + '"/>';
+      offRuns++; offFrom = null;
+    }
+  }
+  $('focus-note').textContent = offRuns
+    ? 'The dotted stretches along the floor are hours when ' + picked +
+      ' sat below the top ' + (S.depth || 16) + ' of this board. Its share was ' +
+      'smaller than anything drawn here, and was not recorded.'
+    : '';
+
   if (others.length >= 5 && usual > 0) {
     const yy = y(usual).toFixed(1);
-    out += '<line class="ln-usual" x1="' + Lm + '" y1="' + yy + '" x2="' + (W - Rm) +
-      '" y2="' + yy + '"/><text class="axis" x="' + (Lm + 5) + '" y="' +
-      (y(usual) - 6).toFixed(1) + '" text-anchor="start">its usual, ' +
-      pct(usual, dp) + '</text>';
+    out += '<line class="ln-usual" x1="' + Lm + '" y1="' + yy + '" x2="' +
+      (W - Rm) + '" y2="' + yy + '"/>';
   }
 
   // The playhead, the one thing tying this chart to every other panel.
