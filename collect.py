@@ -52,7 +52,8 @@ TAPE = os.path.join(ROOT, "data", "tape")          # one .jsonl file per month
 LEGACY_TAPE = os.path.join(ROOT, "data", "tape.jsonl")
 RAW = os.path.join(ROOT, "data", "raw")
 LATEST = os.path.join(ROOT, "docs", "latest.json")
-SERIES = os.path.join(ROOT, "docs", "series.json")
+SERIES = os.path.join(ROOT, "docs", "series.json")   # the index of the boards
+SERIES_DIR = os.path.join(ROOT, "docs", "series")    # one file per board
 
 API = "https://apewisdom.io/api/v1.0/filter/{board}/page/{page}"
 
@@ -80,16 +81,56 @@ SITE_BOARDS = tuple(BOARDS)
 EXPECTED_GAP_HOURS = 1.0
 
 
+MAX_PAGES = 4               # DEPTH needs one, so four is slack, not a budget
+RETRIES = 3                 # a public endpoint throttles; one 429 is not news
+BACKOFF = (1.5, 5.0, 15.0)  # seconds before each retry
+
+
+def get_page(board: str, page: int, client: httpx.Client) -> dict:
+    """One page, retried through the failures that pass on their own.
+
+    A single 429 or 503 used to drop that board for the hour, permanently,
+    because there is no history endpoint to go back and fill it in from. Rate
+    limits and gateway errors are the normal weather on a free public API, so
+    they get three attempts with a widening pause. A 404 or a 400 is a real
+    answer and is not retried.
+    """
+    url = API.format(board=board, page=page)
+    headers = {"User-Agent": "ape-tape (github.com/RezaSoleymanifar/ape-tape)"}
+    last: Exception | None = None
+    for attempt in range(RETRIES):
+        try:
+            r = client.get(url, timeout=45, headers=headers)
+            if r.status_code in (429, 500, 502, 503, 504):
+                raise httpx.HTTPStatusError(f"{r.status_code} on {board} page {page}",
+                                            request=r.request, response=r)
+            r.raise_for_status()
+            return r.json()
+        except (httpx.HTTPStatusError, httpx.TransportError, ValueError) as exc:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status is not None and status not in (429, 500, 502, 503, 504):
+                raise
+            last = exc
+            if attempt + 1 < RETRIES:
+                time.sleep(BACKOFF[min(attempt, len(BACKOFF) - 1)])
+    raise last                                          # type: ignore[misc]
+
+
 def fetch_board(board: str, client: httpx.Client) -> dict:
-    """Pages until DEPTH is met, keeping the envelope so truncation is visible."""
+    """The top DEPTH rows, with the envelope kept so truncation is visible.
+
+    DEPTH equals PER_PAGE today, so one page is normally the whole job and the
+    loop below does not run twice. It stays because the page size is theirs to
+    change, and a board that starts answering fifty at a time should still come
+    back with a hundred rather than silently halve the record.
+    """
     rows: list[dict] = []
     count = pages = 0
     page = 1
-    while len(rows) < DEPTH:
-        r = client.get(API.format(board=board, page=page), timeout=45,
-                       headers={"User-Agent": "ape-tape (github.com/RezaSoleymanifar/ape-tape)"})
-        r.raise_for_status()
-        body = r.json()
+    # Bounded. `pages` comes from the server, and an unbounded loop against it
+    # can outrun the job's ten minute cap and lose the hour entirely.
+    while len(rows) < DEPTH and page <= MAX_PAGES:
+        body = get_page(board, page, client)
         count, pages = int(body.get("count") or 0), int(body.get("pages") or 0)
         got = body.get("results") or []
         rows += got
@@ -132,28 +173,47 @@ def observe(client: httpx.Client) -> tuple[dict, dict]:
     meta: dict[str, dict] = {}
 
     for board in BOARDS:
+        envelope = None
         try:
             envelope = fetch_board(board, client)
+            raw[board] = envelope           # kept even if deriving then fails
+            if envelope["results"]:
+                boards[board] = derive(envelope)
+            meta[board] = {"count": envelope["count"], "pages": envelope["pages"],
+                           "kept": envelope["kept"]}
         except Exception as exc:
-            meta[board] = {"error": type(exc).__name__}
-            continue
-        raw[board] = envelope
-        if envelope["results"]:
-            boards[board] = derive(envelope)
-        meta[board] = {"count": envelope["count"], "pages": envelope["pages"],
-                       "kept": envelope["kept"]}
+            # `derive` used to sit outside this. One malformed row, a thousands
+            # separator in a mentions field, and the exception escaped before
+            # anything was written, throwing away all nine boards' raw
+            # responses that were already fetched and in memory. Now the raw
+            # envelope is kept whatever the deriving does, and a board that
+            # cannot be derived is a named failure rather than a lost hour.
+            meta[board] = {"error": type(exc).__name__, "detail": str(exc)[:200]}
+            if envelope is not None:
+                meta[board]["raw_kept"] = True
         time.sleep(0.4)
 
     return ({"known_at": known_at, "boards": raw},
             {"known_at": known_at, "boards": boards, "meta": meta})
 
 
+def when(iso: str) -> datetime:
+    """A stored timestamp, always UTC-aware.
+
+    `fromisoformat` accepts a naive string without complaint, and subtracting
+    one from an aware one raises. A single hand-edited line without its offset
+    would otherwise stop the collector on every run from then on, so anything
+    without a timezone is read as UTC, which is what this writes.
+    """
+    parsed = datetime.fromisoformat(iso)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
 def gap_hours(now_iso: str, previous_iso: str | None) -> float | None:
     """Real hours back to the reading everything here is compared against."""
     if not previous_iso:
         return None
-    delta = datetime.fromisoformat(now_iso) - datetime.fromisoformat(previous_iso)
-    return round(delta.total_seconds() / 3600, 3)
+    return round((when(now_iso) - when(previous_iso)).total_seconds() / 3600, 3)
 
 
 def enrich(obs: dict, previous: dict | None) -> dict:
@@ -201,6 +261,29 @@ def tape_path(known_at: str) -> str:
     return os.path.join(TAPE, known_at[:7] + ".jsonl")
 
 
+def tail_lines(path: str, limit: int) -> list[str]:
+    """The last `limit` non-blank lines, without holding the file in memory.
+
+    A month of readings is around a hundred megabytes. Materialising all of it
+    to take the last few would undo the point of sharding, so this walks
+    backwards from the end in blocks and stops as soon as it has enough.
+    """
+    if limit <= 0:
+        return []
+    block, data, found = 262144, b"", 0
+    with open(path, "rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        pos = fh.tell()
+        while pos > 0 and found <= limit:
+            step = min(block, pos)
+            pos -= step
+            fh.seek(pos)
+            data = fh.read(step) + data
+            found = data.count(b"\n")
+    lines = data.decode("utf-8").splitlines()
+    return [ln for ln in lines if ln.strip()][-limit:]
+
+
 def load_tape(limit: int = KEEP_HOURS) -> list[dict]:
     """The most recent `limit` readings.
 
@@ -208,30 +291,93 @@ def load_tape(limit: int = KEEP_HOURS) -> list[dict]:
     the site window to publish. Reading the whole archive to append one line
     would make every run slower than the last.
     """
+    if limit <= 0:
+        return []                       # a negative slice would return the lot
     out: list[dict] = []
     for path in reversed(tape_files()):
-        with open(path, encoding="utf-8") as fh:
-            lines = [ln for ln in fh if ln.strip()]
-        out = [json.loads(ln) for ln in lines[-(limit - len(out)):]] + out
-        if len(out) >= limit:
+        want = limit - len(out)
+        if want <= 0:
             break
+        out = [json.loads(ln) for ln in tail_lines(path, want)] + out
     return out
 
 
-def total_readings() -> int:
-    """How many readings exist in all, which the tail does not tell us."""
-    n = 0
-    for path in tape_files():
-        with open(path, encoding="utf-8") as fh:
-            n += sum(1 for ln in fh if ln.strip())
+def count_path() -> str:
+    return os.path.join(TAPE, "counts.json")
+
+
+def count_lines(path: str) -> int:
+    """Newlines, read in blocks, without decoding a hundred megabytes."""
+    n, block = 0, 1 << 20
+    with open(path, "rb") as fh:
+        while chunk := fh.read(block):
+            n += chunk.count(b"\n")
+        fh.seek(0, os.SEEK_END)
+        if fh.tell():                       # a last line with no trailing \n
+            fh.seek(fh.tell() - 1)
+            if fh.read(1) != b"\n":
+                n += 1
     return n
 
 
+def total_readings() -> int:
+    """How many readings exist in all, which the tail does not tell us.
+
+    Closed months never change, so they are counted once and remembered in a
+    small index beside the shards. Only the month being written to is counted
+    again. Reading every line of every month on every run was the last thing
+    here that got slower as the archive grew.
+    """
+    path = count_path()
+    counts: dict[str, int] = {}
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                counts = json.load(fh)
+        except (ValueError, OSError):
+            counts = {}
+
+    live = datetime.now(timezone.utc).strftime("%Y-%m")
+    fresh: dict[str, int] = {}
+    for file in tape_files():
+        key = os.path.basename(file).rsplit(".jsonl", 1)[0]
+        fresh[key] = (counts[key] if key in counts and key != live
+                      else count_lines(file))
+
+    if fresh != counts:
+        os.makedirs(TAPE, exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(fresh, fh, indent=1, sort_keys=True)
+        os.replace(tmp, path)
+    return sum(fresh.values())
+
+
+def first_reading_at() -> str | None:
+    """When the archive starts, from the oldest month's first line."""
+    files = tape_files()
+    for path in files:
+        try:
+            with open(path, encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip():
+                        return json.loads(line)["known_at"]
+        except (ValueError, OSError, KeyError):
+            continue                    # a damaged oldest file is not fatal
+    return None
+
+
 def write_raw(raw: dict) -> str:
-    when = datetime.fromisoformat(raw["known_at"])
-    folder = os.path.join(RAW, when.strftime("%Y-%m-%d"))
+    """The response bytes, one file per reading.
+
+    Named to the second. Two runs inside the same minute used to append two
+    tape lines over a single raw file, leaving a reading with nothing behind
+    it and a guard that could not see the difference.
+    """
+    at = when(raw["known_at"])
+    folder = os.path.join(RAW, at.strftime("%Y-%m-%d"))
     os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, when.strftime("%H%M") + ".json.gz")
+    path = os.path.join(folder, at.strftime("%H%M%S") + ".json.gz")
     with gzip.open(path, "wt", encoding="utf-8", compresslevel=9) as fh:
         json.dump(raw, fh, separators=(",", ":"))
     return path
@@ -262,22 +408,30 @@ def write_site(tape: list[dict], readings: int, first_known_at: str | None) -> N
       * mentions are not stored per ticker, only the board's total, since
         `share` already carries the fraction and the product recovers the count
 
-    That is roughly 1 KB an hour for nine boards, against about 8 KB for the
-    same information written plainly.
-    """
-    window = []
-    dictionary: list[str] = []
-    index: dict[str, int] = {}
+    And the series is written one file per board rather than one file for all
+    nine, because the page charts one board at a time. A reader who never leaves
+    all-stocks was downloading the eight boards they did not look at: a month of
+    everything is well over a megabyte, and a month of one board is a tenth of
+    that. `series.json` is now an index naming the boards and how many readings
+    each has; `series/<board>.json` is the board.
 
-    for obs in tape[-KEEP_HOURS:]:
-        boards = obs.get("boards") or {}
-        if not boards:
-            continue                    # a failed reading charts as a gap
-        packed = {}
-        for b in SITE_BOARDS:
-            rows = boards.get(b)
+    That is roughly 150 bytes an hour for the board being read, against about
+    8 KB for the same information written plainly for all nine.
+    """
+    generated = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    window = tape[-KEEP_HOURS:]
+    os.makedirs(SERIES_DIR, exist_ok=True)
+
+    counts: dict[str, int] = {}
+    for b in SITE_BOARDS:
+        dictionary: list[str] = []
+        index: dict[str, int] = {}
+        observations = []
+
+        for obs in window:
+            rows = (obs.get("boards") or {}).get(b)
             if not rows:
-                continue
+                continue        # the board did not answer, and a gap is honest
             rows = sorted(rows, key=lambda r: r["rank"])[:CHART_DEPTH]
             keys, shares = [], []
             for r in rows:
@@ -288,34 +442,52 @@ def write_site(tape: list[dict], readings: int, first_known_at: str | None) -> N
                 keys.append(index[tk])
                 # share in hundred-thousandths, the precision `derive` rounds to
                 shares.append(round((r.get("share") or 0) * 100000))
-            packed[b] = {
+            observations.append({
+                "t": obs["known_at"],
+                "gap": obs.get("gap_hours"),
                 "k": keys,
                 "s": shares,
-                # Total mentions across every row we kept, which is the
-                # denominator `share` was divided by. mentions = share * m.
-                "m": sum(int(r.get("mentions") or 0) for r in boards.get(b, [])),
-            }
-        window.append({
-            "t": obs["known_at"],
-            "gap": obs.get("gap_hours"),
-            "b": packed,
-            "c": {k: v for k, v in (obs.get("churn") or {}).items()
-                  if k in SITE_BOARDS},
-        })
+                # Total mentions across every row kept for this board, which is
+                # the denominator `share` was divided by. mentions = share * m.
+                "m": sum(int(x.get("mentions") or 0)
+                         for x in (obs.get("boards") or {})[b]),
+                "c": (obs.get("churn") or {}).get(b),
+            })
 
-    os.makedirs(os.path.dirname(SERIES), exist_ok=True)
+        path = os.path.join(SERIES_DIR, b + ".json")
+        if not observations:
+            # Nothing recorded on this board inside the window. Leaving the last
+            # file behind would publish a month-old board as though it were
+            # current, so it goes.
+            if os.path.exists(path):
+                os.remove(path)
+            continue
+        counts[b] = len(observations)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({
+                "board": b,
+                "generated_at": generated,
+                "expected_gap_hours": EXPECTED_GAP_HOURS,
+                "depth": CHART_DEPTH,
+                "tickers": dictionary,
+                "observations": observations,
+            }, fh, separators=(",", ":"))
+
     with open(SERIES, "w", encoding="utf-8") as fh:
         json.dump({
-            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "window_hours": KEEP_HOURS,
+            "generated_at": generated,
+            # Readings, not hours. Hours get missed, so 720 readings can span
+            # more than 720 hours, and calling it `window_hours` said otherwise.
+            "window_readings": KEEP_HOURS,
             "expected_gap_hours": EXPECTED_GAP_HOURS,
             "depth": CHART_DEPTH,
-            "boards": list(SITE_BOARDS),
-            "tickers": dictionary,
-            "observations": window,
+            "path": "series/{board}.json",
+            "boards": [b for b in SITE_BOARDS if b in counts],
+            "readings": counts,
         }, fh, separators=(",", ":"))
 
     newest = tape[-1] if tape else {}
+    newest_boards = newest.get("boards") or {}
     with open(LATEST, "w", encoding="utf-8") as fh:
         json.dump({
             "known_at": newest.get("known_at"),
@@ -325,9 +497,45 @@ def write_site(tape: list[dict], readings: int, first_known_at: str | None) -> N
             "first_known_at": first_known_at,
             "churn": newest.get("churn") or {},
             "meta": newest.get("meta") or {},
-            "boards": {b: (newest.get("boards") or {}).get(b, [])[:SITE_DEPTH]
-                       for b in SITE_BOARDS},
+            "scale": scale_of(newest_boards, readings),
+            # Only boards that actually answered. Publishing an empty list for
+            # a board that failed made the page read "this board went quiet"
+            # when the truth was "we could not reach it".
+            "boards": {b: rows[:SITE_DEPTH]
+                       for b, rows in newest_boards.items() if rows},
         }, fh, separators=(",", ":"))
+
+
+def dir_bytes(path: str) -> int:
+    total = 0
+    for root, _, names in os.walk(path):
+        for name in names:
+            try:
+                total += os.path.getsize(os.path.join(root, name))
+            except OSError:
+                pass
+    return total
+
+
+def scale_of(boards: dict, readings: int) -> dict:
+    """What a reader needs to judge how much is behind the page.
+
+    Counts from the newest reading, plus the size of the archive on disk. A
+    dashboard that shows a number without saying how much was counted to get
+    it is asking to be taken on trust.
+    """
+    rows = [r for rows in boards.values() for r in rows]
+    return {
+        "boards_read": len(boards),
+        "boards_possible": len(SITE_BOARDS),
+        "rows": len(rows),
+        "depth_per_board": DEPTH,
+        "tickers": len({r["ticker"] for r in rows}),
+        "mentions": sum(int(r.get("mentions") or 0) for r in rows),
+        "upvotes": sum(int(r.get("upvotes") or 0) for r in rows),
+        "readings": readings,
+        "archive_bytes": dir_bytes(os.path.join(ROOT, "data")),
+    }
 
 
 def main() -> int:
@@ -337,13 +545,32 @@ def main() -> int:
                     help="do nothing if the last reading is newer than this. "
                          "Lets the job be scheduled more than once an hour "
                          "without recording more than once an hour.")
+    ap.add_argument("--rebuild", action="store_true",
+                    help="rewrite docs/ from the tape already on disk and stop. "
+                         "The published files are derived, so a change to their "
+                         "shape should not have to wait for the next hour or "
+                         "spend a request to get one.")
     args = ap.parse_args()
 
     tape = load_tape()
     previous = tape[-1] if tape else None
 
+    if args.rebuild:
+        if not tape:
+            print("no tape to rebuild from.", file=sys.stderr)
+            return 1
+        if args.dry_run:
+            print(f"would rebuild docs from {total_readings()} readings. "
+                  f"--dry-run writes nothing.")
+            return 0
+        first_at = first_reading_at()
+        readings = total_readings()
+        write_site(tape[-KEEP_HOURS:], readings, first_at)
+        print(f"docs rebuilt from {readings} readings on disk, nothing fetched.")
+        return 0
+
     if args.min_gap and previous:
-        age = datetime.now(timezone.utc) - datetime.fromisoformat(previous["known_at"])
+        age = datetime.now(timezone.utc) - when(previous["known_at"])
         if age < timedelta(minutes=args.min_gap):
             print(f"last reading is {age.total_seconds() / 60:.0f} min old, "
                   f"under the {args.min_gap:.0f} min floor. Nothing to do.")
@@ -386,13 +613,22 @@ def main() -> int:
         fh.write(json.dumps(obs, separators=(",", ":")) + "\n")
     print(f"  tape -> {os.path.relpath(shard, ROOT)}")
 
+    # Past this point the reading is on disk and must be committed. Anything
+    # that throws here would exit non-zero, the workflow would skip its commit
+    # step, and the runner would be destroyed with the only copy on it. The
+    # published files are derived and can be rebuilt with --rebuild, so a
+    # failure to write them is reported and survived, not raised.
     tape.append(obs)
-    first = tape_files()
-    with open(first[0], encoding="utf-8") as fh:
-        first_at = json.loads(fh.readline())["known_at"]
-    readings = total_readings()
-    write_site(tape[-KEEP_HOURS:], readings, first_at)
-    print(f"  tape now {readings} readings ({readings / 24:.1f} days)")
+    try:
+        readings = total_readings()
+        write_site(tape[-KEEP_HOURS:], readings, first_reading_at())
+        span = gap_hours(obs["known_at"], first_reading_at())
+        print(f"  tape now {readings} readings"
+              + (f" across {span / 24:.1f} days" if span else ""))
+    except Exception as exc:                    # noqa: BLE001
+        print(f"  docs not rewritten ({type(exc).__name__}: {exc}). "
+              f"The reading is safe on the tape; run --rebuild to catch up.",
+              file=sys.stderr)
     return 0
 
 

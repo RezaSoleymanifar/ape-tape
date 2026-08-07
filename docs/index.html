@@ -3,126 +3,276 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ape-tape, hourly record of the ApeWisdom boards</title>
-<meta name="description" content="A live dashboard of Reddit ticker mentions, recorded hourly. ApeWisdom publishes no history, so this keeps one.">
+<title>ape-tape, the evolution of attention</title>
+<meta name="description" content="Which tickers Reddit is paying attention to, hour by hour, with a playhead you can drag back through the record.">
+<meta property="og:title" content="ape-tape, the evolution of attention">
+<meta property="og:description" content="Which tickers Reddit is paying attention to, hour by hour, with a playhead you can drag back through the record.">
+<meta name="theme-color" content="#0b0d11">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230b0d11'/><circle cx='32' cy='32' r='24' fill='none' stroke='%23f0b429' stroke-width='5'/><circle cx='32' cy='32' r='5.5' fill='%23f0b429'/><circle cx='32' cy='16.5' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='32' cy='47.5' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='16.5' cy='32' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/><circle cx='47.5' cy='32' r='5' fill='none' stroke='%23f0b429' stroke-width='3.4'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
 <style>
+/* The page is dark only, and every colour below is measured against that one
+   surface. Heat is a single-hue ordinal ramp validated on #12151b: monotone in
+   lightness, nine degrees of hue spread across the whole scale, and its dimmest
+   step still clears 2:1 against the panel, so "barely mentioned" is faint but
+   never invisible. Heat is the only thing carrying magnitude; the close-up line
+   is the only other data colour and is a different hue entirely, so the two
+   encodings can never be mistaken for one another. */
 :root{
-  --bg:#0b0d11; --panel:#12151b; --panel2:#161a21; --line:#1f242d;
-  --ink:#eef2f7; --dim:#8792a3; --hot:#f0b429; --up:#3ddc84; --down:#ff6b5e;
+  --bg:#0b0d11; --panel:#12151b; --panel2:#161a21; --line:#1f242d; --line2:#2c333f;
+  --ink:#eef2f7; --dim:#8792a3; --muted:#6b7585;
+  --brand:#f0b429;
+  --focus:#3987e5;                     /* the single series on the close-up */
+  --good:#0ca30c; --bad:#d03b3b;       /* reserved status pair, never a series */
+  --h1:#5e4a1e; --h2:#7a601a; --h3:#986f16; --h4:#b78a12;
+  --h5:#d4a40e; --h6:#ecbe2c; --h7:#ffd875;
   --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html{color-scheme:dark}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
   font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
-  display:flex;flex-direction:column}
-a{color:var(--hot);text-decoration:none}
+  min-height:100vh;display:flex;flex-direction:column}
+a{color:var(--brand);text-decoration:none}
 a:hover{text-decoration:underline}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
 
-/* ------------------------------------------------------------------ head */
-/* flex:none on both, or the column layout squeezes them and clips the text */
-.bar{display:flex;align-items:center;gap:14px;padding:12px 20px;flex:none;
+/* ------------------------------------------------------------------- head */
+.bar{display:flex;align-items:center;gap:13px;padding:11px 20px;
   border-bottom:1px solid var(--line);background:var(--panel)}
-.brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;
+.brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;
   letter-spacing:-.03em;white-space:nowrap}
-.brand span{color:var(--hot)}
-.reel{width:26px;height:26px;flex:none;transform-origin:50% 50%;
-  animation:jiggle 2.6s ease-in-out infinite}
-@keyframes jiggle{
-  0%,72%,100%{transform:rotate(0deg)}
-  76%{transform:rotate(-9deg)}82%{transform:rotate(7deg)}
-  88%{transform:rotate(-4deg)}94%{transform:rotate(2deg)}}
-@media (prefers-reduced-motion:reduce){.reel{animation:none}}
-.meta{margin-left:auto;display:flex;align-items:center;gap:18px;
-  font-family:var(--mono);font-size:12px;color:var(--dim);flex-wrap:wrap}
-.meta b{color:var(--hot);font-weight:500}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--up);display:inline-block;
-  margin-right:6px;animation:pulse 2s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.brand span{color:var(--brand)}
+.reel{width:24px;height:24px;flex:none;animation:jiggle 2.6s ease-in-out infinite}
+@keyframes jiggle{0%,72%,100%{transform:rotate(0)}76%{transform:rotate(-9deg)}
+  82%{transform:rotate(7deg)}88%{transform:rotate(-4deg)}94%{transform:rotate(2deg)}}
+.meta{margin-left:auto;display:flex;align-items:center;gap:13px;
+  font-family:var(--mono);font-size:11.5px;color:var(--dim);flex-wrap:wrap;
+  justify-content:flex-end}
+.meta b{color:var(--brand);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good);
+  display:inline-block;margin-right:6px;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ---------------------------------------------------------------- ticker */
-.ticker{overflow:hidden;white-space:nowrap;padding:9px 0;flex:none;
-  border-bottom:1px solid var(--line);background:#0e1117;
+/* ------------------------------------------------------------------- hero */
+.hero{padding:17px 20px 15px;border-bottom:1px solid var(--line);flex:none;
+  background:linear-gradient(180deg,var(--panel) 0%,var(--bg) 100%)}
+.hero h1{margin:0;font-size:clamp(19px,2.5vw,29px);font-weight:800;
+  letter-spacing:-.03em;line-height:1.14}
+.hero h1 span{color:var(--brand)}
+.hero .sub{margin:8px 0 0;color:var(--dim);font-size:13px;max-width:78ch;
+  line-height:1.55}
+.hero .sub a{color:var(--ink);border-bottom:1px solid var(--line2)}
+/* What is behind the page, so nobody has to take the numbers on trust. */
+.scale{display:flex;flex-wrap:wrap;gap:9px 24px;margin:14px 0 0;
+  font-family:var(--mono);font-size:11px;color:var(--muted)}
+.scale div{display:flex;align-items:baseline;gap:6px;margin:0}
+.scale dt{order:2;white-space:nowrap}
+.scale dd{order:1;margin:0;color:var(--ink);font-size:14px;font-weight:700;
+  font-variant-numeric:tabular-nums}
+@media(max-width:620px){
+  .hero{padding:14px 14px 12px}
+  .hero .sub{font-size:12.5px}
+  .scale{gap:8px 16px;font-size:10.5px}
+  .scale dd{font-size:13px}
+}
+
+/* ------------------------------------------------------------------ strip */
+.strip{overflow:hidden;white-space:nowrap;padding:8px 0;background:#0e1117;
+  border-bottom:1px solid var(--line);
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
-.run{display:inline-block;white-space:nowrap;animation:slide 70s linear infinite;
-  font-family:var(--mono);font-size:12.5px;will-change:transform}
-.run:hover{animation-play-state:paused}
+.run{display:inline-block;white-space:nowrap;animation:slide 78s linear infinite;
+  font-family:var(--mono);font-size:12px;will-change:transform}
+.strip:hover .run{animation-play-state:paused}
 @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.tick{margin-right:26px}
+.tick{margin-right:24px}
 .tick b{font-weight:700}
 
-/* ------------------------------------------------------------------ grid */
-.grid{flex:1;display:grid;gap:12px;padding:12px 20px 20px;
-  grid-template-columns:1fr;align-content:start}
-@media(min-width:1000px){
-  .grid{grid-template-columns:2.1fr 1fr;grid-template-rows:auto 1fr}
-  .chart{grid-column:1;grid-row:1 / span 2}
-  .stats{grid-column:2;grid-row:1}
-  .board{grid-column:2;grid-row:2;min-height:0}
+/* ----------------------------------------------------------- time machine */
+.travel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line);
+  transition:background .18s,box-shadow .18s}
+.travel[data-past="true"]{background:#191510;box-shadow:inset 0 -2px 0 var(--brand)}
+.tbtn{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;
+  padding:5px 11px;font-family:var(--mono);font-size:12px;cursor:pointer;
+  line-height:1.5;white-space:nowrap;transition:border-color .12s,color .12s}
+.tbtn:hover:not(:disabled){border-color:var(--brand);color:var(--brand)}
+.tbtn:disabled{opacity:.35;cursor:default}
+.tbtn.on{background:var(--brand);border-color:var(--brand);color:#0b0d11;font-weight:700}
+.scrubwrap{flex:1 1 240px;display:flex;align-items:center;min-width:160px}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;
+  background:transparent;cursor:pointer;height:22px;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:3px;
+  background:linear-gradient(90deg,var(--h3),var(--h6))}
+input[type=range]::-moz-range-track{height:4px;border-radius:3px;
+  background:linear-gradient(90deg,var(--h3),var(--h6))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:15px;height:15px;border-radius:50%;background:var(--ink);
+  border:2px solid var(--bg);margin-top:-5.5px}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;
+  background:var(--ink);border:2px solid var(--bg)}
+.stamp{font-family:var(--mono);font-size:12px;white-space:nowrap;
+  min-width:172px;text-align:right}
+.stamp b{color:var(--brand);font-weight:500}
+.stamp .sub{display:block;color:var(--dim);font-size:10.5px}
+
+/* ------------------------------------------------------------------- grid */
+.grid{flex:1;display:grid;gap:12px;padding:12px 20px 18px;
+  grid-template-columns:minmax(0,1fr);align-content:start}
+@media(min-width:1080px){
+  .grid{grid-template-columns:minmax(0,2.15fr) minmax(0,1fr);
+    grid-template-rows:auto auto}
+  .c-map{grid-column:1;grid-row:1}
+  .c-focus{grid-column:1;grid-row:2}
+  .c-moment{grid-column:2;grid-row:1}
+  .c-table{grid-column:2;grid-row:2;min-height:0}
 }
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
   padding:14px 16px;min-width:0}
-.card h2{margin:0 0 2px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;
+.card h2{margin:0 0 3px;font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;
   text-transform:uppercase;color:var(--dim);font-weight:400}
-.card .hint{margin:0 0 12px;color:var(--dim);font-size:12px}
+.hint{margin:0 0 11px;color:var(--dim);font-size:12px}
+.empty{color:var(--dim);font-family:var(--mono);font-size:12.5px;
+  padding:40px 12px;text-align:center;border:1px dashed var(--line2);
+  border-radius:10px;line-height:1.7;margin:0}
 
-#bump{width:100%;height:auto;display:block;overflow:visible}
-.bump-line{fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
-.bump-dot{stroke:var(--panel);stroke-width:1.6}
-.bump-label{font-family:var(--mono);font-size:11px}
-.axis{font-family:var(--mono);font-size:9.5px;fill:var(--dim)}
-.grid-line{stroke:var(--line);stroke-width:1}
-.empty{color:var(--dim);font-family:var(--mono);font-size:12.5px;padding:70px 0;text-align:center}
-
-.gap-band{fill:var(--down);opacity:.07}
-.gap-edge{stroke:var(--down);stroke-width:1;stroke-dasharray:3 3;opacity:.5}
-.gap-note{font-family:var(--mono);font-size:9px;fill:var(--down);opacity:.85}
-
-/* --------------------------------------------------------------- pickers */
-.picks{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+/* ---------------------------------------------------------------- pickers */
+.picks{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 9px}
 .pick{font-family:var(--mono);font-size:11px;color:var(--dim);cursor:pointer;
   background:var(--panel2);border:1px solid var(--line);border-radius:999px;
   padding:4px 11px;line-height:1.4;transition:color .12s,border-color .12s}
-.pick:hover{color:var(--ink);border-color:#2c333f}
-.pick[aria-pressed="true"]{color:var(--bg);background:var(--hot);border-color:var(--hot);
-  font-weight:700}
+.pick:hover{color:var(--ink);border-color:var(--line2)}
+.pick[aria-pressed="true"]{color:#0b0d11;background:var(--brand);
+  border-color:var(--brand);font-weight:700}
 .picks.small .pick{font-size:10.5px;padding:3px 9px}
 
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tile{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
-.tile b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
-.tile span{display:block;color:var(--dim);font-size:11px;margin-top:4px;line-height:1.35}
-.tile.wide{grid-column:1 / -1}
+/* ---------------------------------------------------------------- heatmap */
+.hm{display:grid;gap:1px;align-items:stretch}
+.hm .lab{display:flex;align-items:center;justify-content:flex-end;gap:5px;
+  padding:0 8px 0 0;background:none;border:0;cursor:pointer;
+  font-family:var(--mono);font-size:11px;color:var(--dim);
+  white-space:nowrap;overflow:hidden;transition:color .12s}
+.hm .lab:hover{color:var(--ink)}
+.hm .lab[aria-pressed="true"]{color:var(--ink);font-weight:700}
+.hm .lab[aria-pressed="true"]::before{content:"";width:3px;height:13px;
+  border-radius:2px;background:var(--focus);flex:none;order:-1}
+.cell{min-height:13px;border-radius:2px;background:#0f1218}
+.cell[data-h="1"]{background:var(--h1)}.cell[data-h="2"]{background:var(--h2)}
+.cell[data-h="3"]{background:var(--h3)}.cell[data-h="4"]{background:var(--h4)}
+.cell[data-h="5"]{background:var(--h5)}.cell[data-h="6"]{background:var(--h6)}
+.cell[data-h="7"]{background:var(--h7)}
+/* Nothing was recorded in this column. That is not the same fact as "this name
+   was quiet", so it does not get the quiet colour: it gets a texture, which
+   also survives forced colours and print, where the fills do not. */
+.cell[data-gap]{background:
+  repeating-linear-gradient(45deg,#1b2029 0 3px,#0e1117 3px 6px)}
+.colhead{height:9px;border-radius:2px 2px 0 0;background:transparent}
+.colhead[data-now]{background:var(--dim)}
+.colhead[data-play]{background:var(--brand)}
+.hmx{display:grid;gap:1px;margin-top:5px;font-family:var(--mono);font-size:9.5px;
+  color:var(--muted)}
+.hmx span{white-space:nowrap;overflow:visible}
+.legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;
+  font-family:var(--mono);font-size:10px;color:var(--muted)}
+.ramp{display:flex;align-items:flex-end;gap:2px}
+.ramp span{display:block}
+.ramp i{width:22px;height:10px;border-radius:2px;display:block}
+.ramp em{font-style:normal;display:block;margin-top:3px;text-align:center;width:22px}
+.swatch{display:inline-block;width:14px;height:10px;border-radius:2px;
+  vertical-align:-1px;margin-right:5px;
+  background:repeating-linear-gradient(45deg,#1b2029 0 3px,#0e1117 3px 6px)}
 
-.scroll{overflow:auto;max-height:340px}
+/* ---------------------------------------------------------------- tooltip */
+.tip{position:fixed;z-index:40;pointer-events:none;opacity:0;
+  transform:translate(-50%,-100%);transition:opacity .1s;
+  background:#080a0e;border:1px solid var(--line2);border-radius:8px;
+  padding:7px 10px;font-family:var(--mono);font-size:11.5px;line-height:1.6;
+  box-shadow:0 8px 22px rgba(0,0,0,.6);white-space:nowrap;max-width:86vw}
+.tip[data-on]{opacity:1}
+.tip b{color:var(--brand)}
+.tip s{display:block;text-decoration:none;color:var(--dim);font-size:10.5px}
+
+/* ------------------------------------------------------------- close-up */
+#line{width:100%;height:auto;display:block;overflow:visible}
+.ln{fill:none;stroke:var(--focus);stroke-width:2;stroke-linecap:round;
+  stroke-linejoin:round}
+.ln-area{fill:var(--focus);opacity:.13;stroke:none}
+.ln-usual{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 4}
+.ln-head{stroke:var(--brand);stroke-width:1.5}
+.axis{font-family:var(--mono);font-size:9.5px;fill:var(--muted)}
+.gridline{stroke:var(--line);stroke-width:1}
+.gapband{fill:#ffffff;opacity:.035}
+.headline{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin:0 0 4px}
+.headline b{font-size:22px;font-weight:800;letter-spacing:-.02em;font-family:var(--mono)}
+.headline em{font-style:normal;color:var(--dim);font-size:12.5px}
+.badge{font-family:var(--mono);font-size:10px;letter-spacing:.05em;
+  text-transform:uppercase;border-radius:999px;padding:2px 8px;
+  border:1px solid currentColor;white-space:nowrap}
+.badge.hot{color:var(--brand)}
+.badge.cool{color:var(--dim)}
+
+/* ------------------------------------------------------------------ tiles */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:11px 12px;min-width:0}
+.tile b{display:block;font-size:22px;font-weight:800;letter-spacing:-.02em;
+  line-height:1.15;overflow:hidden;text-overflow:ellipsis}
+.tile span{display:block;color:var(--dim);font-size:11px;margin-top:3px;line-height:1.35}
+.tile.wide{grid-column:1/-1}
+.tile.wide b{font-family:var(--mono)}
+
+/* ------------------------------------------------------------------ table */
+.scroll{overflow:auto;max-height:min(46vh,420px)}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
-th{position:sticky;top:0;background:var(--panel);font-family:var(--mono);font-size:9.5px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:400;
-  text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
-td{padding:8px;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;z-index:1;background:var(--panel);font-family:var(--mono);
+  font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);
+  font-weight:400;text-align:left;padding:7px 7px;border-bottom:1px solid var(--line)}
+td{padding:7px;border-bottom:1px solid var(--line)}
+tr[data-sel]{background:rgba(57,135,229,.09)}
 td.tk{font-family:var(--mono);font-weight:700}
+td.tk button{background:none;border:0;padding:0;font:inherit;cursor:pointer;color:inherit}
+td.tk button:hover{color:var(--focus)}
 td.n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono)}
 th.n{text-align:right}
-.up{color:var(--up)}.down{color:var(--down)}.dimc{color:var(--dim)}
-.new{font-family:var(--mono);font-size:9px;border:1px solid var(--hot);color:var(--hot);
-  border-radius:3px;padding:0 4px;margin-left:5px}
+.up{color:var(--good)}.down{color:var(--bad)}.dimc{color:var(--dim)}
+.new{font-family:var(--mono);font-size:9px;border:1px solid var(--brand);
+  color:var(--brand);border-radius:3px;padding:0 4px;margin-left:5px;font-weight:400}
 
-footer{padding:10px 20px 16px;color:var(--dim);font-size:11.5px;border-top:1px solid var(--line)}
-footer details summary{cursor:pointer;color:var(--dim)}
-footer p{margin:8px 0 0;max-width:80em}
+footer{padding:10px 20px 18px;color:var(--dim);font-size:11.5px;
+  border-top:1px solid var(--line)}
+footer summary{cursor:pointer}
+.credit{margin:0 0 9px !important;color:var(--dim)}
+.credit a{color:var(--ink);border-bottom:1px solid var(--line2)}
+footer p{margin:8px 0 0;max-width:78em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);
+  white-space:nowrap}
+
+@media (prefers-reduced-motion:reduce){
+  .reel,.dot{animation:none}
+  .run{animation:none}
+  *{transition-duration:.001ms !important}
+}
+@media (forced-colors:active){
+  .cell{forced-color-adjust:none}
+}
+@media(max-width:640px){
+  .bar{padding:10px 13px}.grid{padding:10px 13px 16px}.travel{padding:9px 13px}
+  .card{padding:12px 12px}
+  .stamp{min-width:0;text-align:left;flex:1 1 100%}
+  .tiles{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
 <div class="bar">
   <div class="brand">ape&#8209;<span>tape</span></div>
-  <svg class="reel" viewBox="0 0 64 64" role="img" aria-label="tape">
+  <svg class="reel" viewBox="0 0 64 64" role="img" aria-label="tape reel">
     <circle cx="32" cy="32" r="25" fill="#12151b" stroke="#f0b429" stroke-width="4"/>
     <circle cx="32" cy="32" r="5.4" fill="#f0b429"/>
     <circle cx="32" cy="16.5" r="5" fill="none" stroke="#f0b429" stroke-width="3"/>
@@ -130,64 +280,127 @@ footer p{margin:8px 0 0;max-width:80em}
     <circle cx="16.5" cy="32" r="5" fill="none" stroke="#f0b429" stroke-width="3"/>
     <circle cx="47.5" cy="32" r="5" fill="none" stroke="#f0b429" stroke-width="3"/>
   </svg>
-  <div class="meta" id="meta"><span class="dot"></span>connecting&hellip;</div>
+  <div class="meta" id="meta"><span class="dot"></span>reading the tape&hellip;</div>
 </div>
 
-<div class="ticker"><div class="run" id="run"></div></div>
+<header class="hero">
+  <h1>The community&rsquo;s market conversation, <span>on tape</span></h1>
+  <p class="sub">How often each ticker is named across nine Reddit finance
+  boards, read every hour and kept. Scroll back through it.</p>
+  <dl class="scale" id="scale"></dl>
+</header>
+
+<div class="strip"><div class="run" id="run"></div></div>
+
+<div class="travel" id="travel" data-past="false">
+  <button class="tbtn" id="play" aria-label="Play through the record">&#9654;&nbsp;Play</button>
+  <button class="tbtn" id="back" aria-label="One reading earlier">&#9664;</button>
+  <button class="tbtn" id="fwd" aria-label="One reading later">&#9654;</button>
+  <div class="scrubwrap">
+    <input type="range" id="scrub" min="0" max="0" value="0" step="1"
+      aria-label="Move the playhead through the record">
+  </div>
+  <div class="stamp" id="stamp"></div>
+  <button class="tbtn" id="now" aria-label="Jump to the newest reading">Now</button>
+</div>
 
 <div class="grid">
-  <div class="card chart">
-    <h2>Rank over time</h2>
-    <p class="hint" id="chart-hint">Down is climbing. Time is to scale, so a gap
-      in the tape shows as a gap.</p>
+
+  <section class="card c-map" aria-labelledby="map-h">
+    <h2 id="map-h">The evolution of attention</h2>
+    <p class="hint" id="map-hint">Each row is a ticker, each column an hour.
+      Brighter is a larger share of everything the board said.</p>
     <div class="picks" id="boards" role="group" aria-label="Board"></div>
     <div class="picks small" id="ranges" role="group" aria-label="Time range"></div>
-    <svg id="bump" viewBox="0 0 1000 430" role="img" aria-label="Ticker rank over time"></svg>
-    <p class="empty" id="bump-empty" hidden>Two readings needed before a line exists.</p>
-  </div>
+    <div class="hm" id="hm"></div>
+    <div class="hmx" id="hmx" aria-hidden="true"></div>
+    <p class="empty" id="map-empty" hidden></p>
+    <div class="legend" id="legend" hidden>
+      <span>share of the board</span>
+      <span class="ramp" id="ramp"></span>
+      <span><i class="swatch"></i>no reading</span>
+      <span id="bucket-note"></span>
+    </div>
+  </section>
 
-  <div class="card stats">
-    <h2 id="stats-head">Latest reading</h2>
+  <section class="card c-focus" aria-labelledby="focus-h">
+    <h2 id="focus-h">One ticker, up close</h2>
+    <div class="headline" id="focus-head"></div>
+    <p class="hint">Share, not raw mentions, so a quiet night on the board does
+      not read as a name losing interest.</p>
+    <svg id="line" viewBox="0 0 1000 240" role="img" aria-labelledby="focus-h"
+      aria-describedby="focus-alt"></svg>
+    <p class="sr" id="focus-alt"></p>
+    <p class="empty" id="focus-empty" hidden></p>
+  </section>
+
+  <aside class="card c-moment" aria-labelledby="moment-h">
+    <h2 id="moment-h">At this moment</h2>
+    <p class="hint" id="moment-hint"></p>
     <div class="tiles" id="tiles"></div>
-  </div>
+  </aside>
 
-  <div class="card board">
-    <h2 id="board-head">Loudest right now</h2>
+  <aside class="card c-table" aria-labelledby="table-h">
+    <h2 id="table-h">The board, that hour</h2>
     <div class="scroll">
       <table>
-        <thead><tr><th></th><th>ticker</th><th class="n">mentions</th>
-          <th class="n">24h</th><th class="n">move</th></tr></thead>
-        <tbody id="now"></tbody>
+        <caption class="sr" id="table-cap"></caption>
+        <thead><tr>
+          <th class="n">#</th><th>ticker</th><th class="n">mentions</th>
+          <th class="n">share</th><th class="n">24h</th><th class="n">move</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
       </table>
     </div>
-  </div>
+  </aside>
+
 </div>
 
+<div class="tip" id="tip" aria-hidden="true"></div>
+
 <footer>
+  <p class="credit">Counts by <a href="https://apewisdom.io">ApeWisdom</a>,
+  read on the hour and kept by
+  <a href="https://github.com/RezaSoleymanifar/ape-tape">ape&#8209;tape</a>.
+  Not investment advice.</p>
   <details>
     <summary>What this is</summary>
-    <p>ApeWisdom counts how often each <b>ticker</b> is mentioned and upvoted on nine finance
-    subreddits: all-stocks, all-crypto, wallstreetbets, stocks, cryptocurrency, options,
-    investing, stockmarket, pennystocks, and publishes only the current snapshot. This reads it
-    hourly and keeps what it read. It is not Reddit data: no posts, comments, users or topics are
-    exposed or stored. Ticker matching is theirs and unpublished, so common-word symbols
-    (<code>OPEN</code>, <code>IT</code>, <code>ALL</code>) and private companies do appear.
-    Each row carries <code>known_at</code>, the time we read it, and <code>gap_hours</code>,
-    the real distance back to the reading it is compared against. Hours do get missed, and
-    the chart draws them as gaps rather than smoothing over them. Unverified,
-    not investment advice.
-    <a href="https://github.com/RezaSoleymanifar/ape-tape">Source</a> ·
-    <a href="https://apewisdom.io">ApeWisdom</a> ·
+    <p>ApeWisdom counts how often each <b>ticker</b> is mentioned and upvoted across nine
+    boards: seven subreddits (wallstreetbets, stocks, cryptocurrency, options,
+    investing, stockmarket, pennystocks) and two of their own aggregates
+    (all-stocks, all-crypto), which cover more subreddits than those seven. They
+    publish only the current snapshot. This reads every board on the hour and keeps
+    what it read, so a history exists. Hours do get missed, and the header counts
+    them rather than hiding them. It is not Reddit data: no posts, comments, users or topics are
+    exposed or stored. Ticker matching is theirs and unpublished, so common-word
+    symbols (<code>OPEN</code>, <code>IT</code>, <code>ALL</code>) and private
+    companies do appear. Every reading carries <code>known_at</code>, the hour we
+    read it, not the hour anything was written, and it covers every row in that
+    reading. Share is a ticker&rsquo;s fraction
+    of the mentions across the hundred names kept per board, so it says how much of
+    the room a name is taking rather than how loud the room is. Unverified, may miss
+    hours, not investment advice.
+    <a href="https://github.com/RezaSoleymanifar/ape-tape">Source</a> &middot;
+    <a href="https://apewisdom.io">ApeWisdom</a> &middot;
     <a href="https://github.com/RezaSoleymanifar/vintage">Vintage</a></p>
   </details>
 </footer>
 
 <script>
-const PALETTE = ['#f0b429','#3ddc84','#6ba4ff','#ff6b5e','#c792ea','#77cfc9','#ffa94d','#e39ff6'];
-const CRYPTO = 'all-crypto';
+"use strict";
+
+/* ---------------------------------------------------------------- constants */
+
 const RANGES = [['24h', 24], ['7d', 24 * 7], ['30d', 24 * 30], ['all', Infinity]];
 
-// Rendered names for the nine boards. The API's own keys are subreddit slugs.
+/* Seven bins, given by the lower bound of each. Discrete and labelled rather
+   than a continuous scale: share spans two orders of magnitude on a busy board,
+   so a linear ramp draws everything below the leader as black, and any curve
+   that fixes it is a curve the reader cannot see. Bins put the thresholds in
+   the legend, where they can be read. */
+const BINS   = [0, 0.01, 0.02, 0.05, 0.10, 0.20, 0.40];
+const BINLAB = ['<1%', '1%', '2%', '5%', '10%', '20%', '40%'];
+
 const LABEL = {
   'all-stocks': 'all stocks', 'all-crypto': 'all crypto',
   'wallstreetbets': 'r/wallstreetbets', 'stocks': 'r/stocks',
@@ -196,270 +409,834 @@ const LABEL = {
   'pennystocks': 'r/pennystocks',
 };
 
-let SERIES = null, LATEST = null, board = 'all-stocks', hours = 24 * 7;
+const MAX_ROWS = 18;                              // tickers drawn on the map
+const MIN_CELL = 6;                               // px, narrowest column drawn
+const LABEL_W  = 74;                              // px reserved for row names
+const PLAY_MS  = 380;                             // one reading per this long
+const STEPS_H  = [1, 2, 3, 4, 6, 8, 12, 24, 48];  // allowed column widths
+
+/* -------------------------------------------------------------------- state */
+
+let S = null, L = null;           // the index of boards, and the newest reading
+const DATA = new Map();           // board -> its series, fetched when first shown
+let board = 'all-stocks';
+let hours = 24 * 7;
+let head = 0;                     // index into the current window
+let picked = null;                // the ticker the reader opened, if any
+let timer = null;
+let cols = [];                    // the map's columns, rebuilt on every draw
+let rowTickers = [];              // the map's rows, likewise
+
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString('en-US');
+const pct = (v, d) => (v * 100).toFixed(d === undefined ? 1 : d) + '%';
+const esc = s => String(s).replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const ms = iso => new Date(iso).getTime();
+
+/* --------------------------------------------------------------------- load */
+
+const bust = '?v=' + Math.floor(Date.now() / 60000);   // a minute of cacheing
+
+/* One board at a time. The page only ever charts one, and a month of all nine
+   is a megabyte the reader mostly does not look at. */
+function loadBoard(name) {
+  if (DATA.has(name)) return Promise.resolve(DATA.get(name));
+  const path = (S.path || 'series/{board}.json').replace('{board}', name);
+  return fetch(path + bust).then(r => {
+    if (!r.ok) throw new Error(r.status + ' on ' + path);
+    return r.json();
+  }).then(d => {
+    if (!d || !Array.isArray(d.observations) || !Array.isArray(d.tickers)) {
+      throw new Error(path + ' is not the shape this page reads');
+    }
+    DATA.set(name, d);
+    return d;
+  });
+}
 
 Promise.all([
-  fetch('series.json?v=' + Date.now()).then(r => r.json()),
-  fetch('latest.json?v=' + Date.now()).then(r => r.json()),
-]).then(([series, latest]) => { SERIES = series; LATEST = latest; boot(); })
-  .catch(() => { document.getElementById('meta').textContent = 'tape unavailable'; });
+  fetch('series.json' + bust).then(r => r.json()),
+  fetch('latest.json' + bust).then(r => r.json()).catch(() => null),
+]).then(([index, latest]) => {
+  S = index; L = latest || {};
+  if (!S || !Array.isArray(S.boards) || !S.boards.length) {
+    throw new Error('series.json names no boards');
+  }
+  if (!S.boards.includes(board)) board = S.boards[0];
+  return loadBoard(board);
+}).then(boot).catch(fail);
 
-/* How long ago, said the way a person would say it. */
+function fail(err) {
+  $('meta').innerHTML = '<span class="down">the tape did not load</span>';
+  $('travel').style.display = 'none';
+  $('map-empty').hidden = false;
+  $('map-empty').textContent = 'The tape could not be read: ' +
+    (err && err.message ? err.message : 'unknown error') + '.';
+  $('line').style.display = 'none';
+}
+
+/* ------------------------------------------------------------------ helpers */
+
 function ago(iso) {
-  const mins = (Date.now() - new Date(iso).getTime()) / 60000;
+  const mins = (Date.now() - ms(iso)) / 60000;
+  if (mins < 1) return 'just now';
   if (mins < 90) return Math.round(mins) + ' min ago';
   const h = mins / 60;
   if (h < 36) return Math.round(h) + 'h ago';
   return Math.round(h / 24) + 'd ago';
 }
 
-/* The gap the movement figures actually span, which is not always an hour. */
-function gapWord(gap) {
-  if (gap === null || gap === undefined) return 'since the first reading';
+/* Everything is stamped UTC, because the tape is and pretending otherwise
+   would put a reading on the wrong side of a market day. */
+function stampUTC(t, withDay) {
+  const d = new Date(t), p = n => String(n).padStart(2, '0');
+  const hm = p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+  if (withDay === false) return hm;
+  return d.toLocaleDateString('en-US',
+    { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' ' + hm + ' UTC';
+}
+
+const current = () => DATA.get(board) || { tickers: [], observations: [] };
+
+/* Every reading on the chosen board, oldest first. A reading where the board
+   did not answer is simply absent, which is what makes a gap a gap. */
+function readings() {
+  return current().observations;
+}
+
+/* One board at one reading. Rank is the position in the stored list and
+   mentions are share times the board total, because the series stores neither:
+   both are recoverable, so neither is written. */
+function rowsAt(o) {
+  if (!o || !o.k) return [];
+  const names = current().tickers;
+  const out = [];
+  for (let i = 0; i < o.k.length; i++) {
+    const share = o.s[i] / 100000;
+    out.push({
+      ticker: names[o.k[i]],
+      rank: i + 1,
+      share: share,
+      mentions: Math.round(share * (o.m || 0)),
+    });
+  }
+  return out;
+}
+
+function shareOf(o, ticker) {
+  if (!o || !o.k || ticker === null) return null;
+  const names = current().tickers;
+  for (let i = 0; i < o.k.length; i++) {
+    if (names[o.k[i]] === ticker) return o.s[i] / 100000;
+  }
+  return null;
+}
+
+function windowed() {
+  const all = readings();
+  if (!all.length || hours === Infinity) return all;
+  const end = ms(all[all.length - 1].t);
+  return all.filter(o => ms(o.t) >= end - hours * 3600000);
+}
+
+function binOf(share) {
+  if (!(share > 0)) return 0;
+  let b = 1;
+  for (let i = 1; i < BINS.length; i++) if (share >= BINS[i]) b = i + 1;
+  return b;                         // 1..7; 0 means the name was not on the board
+}
+
+function median(xs) {
+  if (!xs.length) return 0;
+  const a = xs.slice().sort((p, q) => p - q), m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+/* How far back the figures at a reading reach. Not always an hour, so the page
+   never says "in the last hour" unless that is what happened. */
+function sinceWord(gap) {
+  if (gap === null || gap === undefined) return 'since the reading before';
   if (gap < 1.5) return 'in the last hour';
-  if (gap < 36) return 'over ' + gap.toFixed(gap < 10 ? 1 : 0) + ' hours';
+  if (gap < 36) return 'over ' + (gap < 10 ? gap.toFixed(1) : Math.round(gap)) + ' hours';
   return 'over ' + (gap / 24).toFixed(1) + ' days';
 }
 
+/* --------------------------------------------------------------------- boot */
+
 function boot() {
-  const boards = (SERIES.boards || []).filter(
-    b => (SERIES.observations || []).some(o => o.r && o.r[b]));
-  if (!boards.includes(board)) board = boards[0];
+  const live = S.boards;
+  if (!readings().length) {
+    $('meta').textContent = 'nothing recorded yet';
+    showEmpty('No board has answered yet. The first reading makes this a chart.');
+    return;
+  }
 
-  document.getElementById('boards').innerHTML = boards.map(b =>
-    `<button class="pick" data-board="${b}" aria-pressed="${b === board}">${
-      LABEL[b] || b}</button>`).join('');
-  document.getElementById('ranges').innerHTML = RANGES.map(([name, h]) =>
-    `<button class="pick" data-hours="${h}" aria-pressed="${h === hours}">${name}</button>`).join('');
+  $('boards').innerHTML = live.map(b =>
+    '<button class="pick" data-board="' + esc(b) + '" aria-pressed="' +
+    (b === board) + '">' + esc(LABEL[b] || b) + '</button>').join('');
+  $('ranges').innerHTML = RANGES.map(function (r) {
+    return '<button class="pick" data-hours="' + r[1] + '" aria-pressed="' +
+      (r[1] === hours) + '">' + r[0] + '</button>';
+  }).join('');
+  $('ramp').innerHTML = BINS.map((_, i) =>
+    '<span><i style="background:var(--h' + (i + 1) + ')"></i><em>' +
+    BINLAB[i] + '</em></span>').join('');
 
-  document.getElementById('boards').onclick = e => {
-    const el = e.target.closest('[data-board]');
-    if (!el) return;
-    board = el.dataset.board;
-    document.querySelectorAll('[data-board]').forEach(
-      n => n.setAttribute('aria-pressed', n.dataset.board === board));
-    draw();
-  };
-  document.getElementById('ranges').onclick = e => {
-    const el = e.target.closest('[data-hours]');
-    if (!el) return;
+  $('boards').addEventListener('click', e => {
+    const el = e.target.closest('[data-board]'); if (!el) return;
+    const next = el.dataset.board;
+    if (next === board) return;
+    stop();
+    // The clock time under the playhead, held across the change so switching
+    // board does not throw the reader back to the present.
+    const w = windowed();
+    const at = w.length ? ms(w[Math.min(head, w.length - 1)].t) : null;
+    document.querySelectorAll('[data-board]').forEach(n =>
+      n.setAttribute('aria-pressed', String(n.dataset.board === next)));
+    $('map-hint').textContent = 'Loading ' + (LABEL[next] || next) + '…';
+    loadBoard(next).then(() => {
+      board = next;
+      picked = null;                 // the old name means nothing on a new board
+      landOn(at);
+      draw();
+    }).catch(fail);
+  });
+  $('ranges').addEventListener('click', e => {
+    const el = e.target.closest('[data-hours]'); if (!el) return;
+    stop();
+    const w = windowed();
+    const at = w.length ? ms(w[Math.min(head, w.length - 1)].t) : null;
     hours = Number(el.dataset.hours);
-    document.querySelectorAll('[data-hours]').forEach(
-      n => n.setAttribute('aria-pressed', Number(n.dataset.hours) === hours));
+    document.querySelectorAll('[data-hours]').forEach(n =>
+      n.setAttribute('aria-pressed', String(Number(n.dataset.hours) === hours)));
+    landOn(at);
     draw();
-  };
+  });
 
+  $('scrub').addEventListener('input', e => { stop(); seek(Number(e.target.value)); });
+  $('back').addEventListener('click', () => { stop(); seek(head - 1); });
+  $('fwd').addEventListener('click', () => { stop(); seek(head + 1); });
+  $('now').addEventListener('click', () => { stop(); seek(Infinity); });
+  $('play').addEventListener('click', () => { timer ? stop() : play(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target;
+    if (t && t.matches && t.matches('input,textarea,select')) return;
+    if (e.key === 'ArrowLeft') { stop(); seek(head - 1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { stop(); seek(head + 1); e.preventDefault(); }
+    else if (e.key === 'Home') { stop(); seek(0); e.preventDefault(); }
+    else if (e.key === 'End') { stop(); seek(Infinity); e.preventDefault(); }
+    else if (e.key === ' ' && !(t && t.closest && t.closest('button,a'))) {
+      timer ? stop() : play(); e.preventDefault();
+    }
+  });
+
+  wireMap();
+  $('rows').addEventListener('click', e => {
+    const b = e.target.closest('[data-pick]'); if (!b) return;
+    picked = b.dataset.pick; stop(); draw();
+  });
+
+  head = Infinity;                  // open on the newest reading
   drawMeta();
+  drawScale();
+  draw();
+
+  let rt = null;
+  addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(draw, 140); });
+}
+
+/* Put the playhead on the reading nearest a wall-clock time. Used whenever the
+   board or the range changes, so the reader keeps the hour they were looking at
+   instead of being thrown back to the present. */
+function landOn(at) {
+  const next = windowed();
+  if (at === null || !next.length) { head = Infinity; return; }
+  let best = 0, gap = Infinity;
+  for (let i = 0; i < next.length; i++) {
+    const d = Math.abs(ms(next[i].t) - at);
+    if (d < gap) { gap = d; best = i; }
+  }
+  head = best;
+}
+
+function showEmpty(text) {
+  $('map-empty').hidden = false;
+  $('map-empty').textContent = text;
+  $('hm').innerHTML = '';
+  $('hmx').innerHTML = '';
+  $('legend').hidden = true;
+  $('travel').style.display = 'none';
+  $('focus-empty').hidden = false;
+  $('focus-empty').textContent = 'Nothing to open yet.';
+  $('line').style.display = 'none';
+  $('tiles').innerHTML = '';
+  $('rows').innerHTML = '';
+  $('run').innerHTML = '';
+}
+
+/* --------------------------------------------------------------- transport */
+
+function seek(i) {
+  const n = windowed().length;
+  if (!n) return;
+  const next = Math.max(0, Math.min(n - 1, i === Infinity ? n - 1 : i));
+  if (next === head) return;
+  head = next;
   draw();
 }
 
-/* Hours that should have been recorded and were not.
- *
- * Counted one way only. Two different estimates of the same thing, one in the
- * header and one under the chart, disagreed by two hours and both looked
- * authoritative.
- */
-function missedHours(obs) {
-  const expected = SERIES.expected_gap_hours || 1;
-  let missed = 0;
-  for (let i = 1; i < obs.length; i++) {
-    const hrs = (new Date(obs[i].t) - new Date(obs[i - 1].t)) / 3600000;
-    if (hrs > expected * 1.75) missed += Math.round(hrs / expected) - 1;
+function play() {
+  const n = windowed().length;
+  if (n < 2) return;
+  if (head >= n - 1) { head = 0; draw(); }
+  $('play').innerHTML = '&#10073;&#10073;&nbsp;Pause';
+  $('play').classList.add('on');
+  timer = setInterval(() => {
+    const total = windowed().length;
+    if (head >= total - 1) { stop(); return; }
+    head++; draw();
+  }, PLAY_MS);
+}
+
+function stop() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  $('play').innerHTML = '&#9654;&nbsp;Play';
+  $('play').classList.remove('on');
+}
+
+/* -------------------------------------------------------------------- draw */
+
+function draw() {
+  const w = windowed();
+  if (!w.length) {
+    showEmpty('Nothing recorded on this board in this range yet.');
+    return;
   }
-  return missed;
+  $('travel').style.display = '';
+  $('map-empty').hidden = true;
+  if (head === Infinity || head > w.length - 1) head = w.length - 1;
+  if (head < 0) head = 0;
+
+  const at = w[head];
+  const rows = rowsAt(at);
+  const prev = head > 0 ? w[head - 1] : null;
+
+  // Whatever the reader opened, if it is nowhere in this window then the
+  // loudest name at the playhead is the honest default.
+  let stillHere = false;
+  for (const o of w) { if (shareOf(o, picked) !== null) { stillHere = true; break; } }
+  if (!picked || !stillHere) picked = rows.length ? rows[0].ticker : null;
+
+  drawTransport(w, at);
+  drawStrip(rows, prev);
+  drawMap(w, at, rows);
+  drawFocus(w, at);
+  drawTiles(w, at, rows, prev);
+  drawTable(w, at, rows, prev);
 }
 
 function drawMeta() {
-  const first = LATEST.first_known_at, last = LATEST.known_at;
-  const span = first && last
-    ? (new Date(last) - new Date(first)) / 3600000 : 0;
-  const missed = missedHours(SERIES.observations || []);
-  document.getElementById('meta').innerHTML =
-    '<span class="dot"></span>last read <b>' + ago(last) + '</b>' +
-    ' &nbsp;·&nbsp; ' + (LATEST.readings || 0).toLocaleString() + ' readings' +
-    ' over ' + (span < 48 ? Math.round(span) + 'h' : (span / 24).toFixed(0) + 'd') +
-    (missed > 0 ? ' &nbsp;·&nbsp; <span class="down">' + missed + ' hour' +
+  const obs = readings();
+  const last = L.known_at || (obs.length ? obs[obs.length - 1].t : null);
+  const first = L.first_known_at || (obs.length ? obs[0].t : null);
+  const span = first && last ? (ms(last) - ms(first)) / 3600000 : 0;
+  const total = L.readings || obs.length;
+  const missed = Math.max(0, Math.round(span) + 1 - total);
+  $('meta').innerHTML =
+    '<span class="dot"></span>last read <b>' + (last ? esc(ago(last)) : 'never') + '</b>' +
+    ' &nbsp;·&nbsp; ' + fmt(total) + ' reading' + (total === 1 ? '' : 's') + ' over ' +
+    (span < 48 ? Math.round(span) + 'h' : Math.round(span / 24) + 'd') +
+    (missed > 0 ? ' &nbsp;·&nbsp; <span class="down">' + fmt(missed) + ' hour' +
       (missed === 1 ? '' : 's') + ' missed</span>' : '') +
     ' &nbsp;·&nbsp; <a href="https://github.com/RezaSoleymanifar/ape-tape">source</a>';
 }
 
-function draw() {
-  const name = LABEL[board] || board;
-  document.getElementById('stats-head').textContent = 'Latest reading, ' + name;
-  document.getElementById('board-head').textContent = 'Loudest right now, ' + name;
-  drawTicker(LATEST);
-  drawTiles(LATEST);
-  drawBoard(LATEST);
-  drawBump(window_());
-}
-
-/* Observations inside the chosen range, oldest first. */
-function window_() {
-  const obs = (SERIES.observations || []).filter(o => o.r && o.r[board]);
-  if (hours === Infinity || !obs.length) return obs;
-  const cut = new Date(obs[obs.length - 1].t).getTime() - hours * 3600000;
-  return obs.filter(o => new Date(o.t).getTime() >= cut);
-}
-
-function drawTicker(last) {
-  const rows = [...(last.boards[board] || []).slice(0, 16),
-                ...(last.boards[CRYPTO] || []).slice(0, 8)];
-  const html = rows.map(r => {
-    const d = r.delta_24h, c = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
-    return `<span class="tick"><b>${r.ticker}</b> ${r.mentions.toLocaleString()} ` +
-      `<span class="${c}">${d > 0 ? '▲' : (d < 0 ? '▼' : '·')}` +
-      `${Math.abs(d).toLocaleString()}</span></span>`;
-  }).join('');
-  document.getElementById('run').innerHTML = html + html;
-}
-
-function drawTiles(last) {
-  const rows = last.boards[board] || [];
-  const top = rows[0] || {};
-  const churn = last.churn && last.churn[board];
-  const fresh = rows.filter(r => r.new_entry).length;
-  const conc = rows.slice(0, 3).reduce((a, r) => a + r.share, 0);
-  const mover = rows.slice().sort((a, b) => (b.delta_24h || 0) - (a.delta_24h || 0))[0] || {};
-  // Churn and new entries are measured against the previous reading, and the
-  // previous reading is not always an hour back. Say which it was.
-  const since = gapWord(last.gap_hours);
-  document.getElementById('tiles').innerHTML = `
-    <div class="tile wide"><b>${top.ticker || 'n/a'}</b>
-      <span>loudest, ${((top.share || 0) * 100).toFixed(0)}% of every mention on the board</span></div>
-    <div class="tile"><b>${mover.ticker || 'n/a'}</b>
-      <span>fastest riser, ${(mover.delta_24h || 0) > 0 ? '+' : ''}${(mover.delta_24h || 0).toLocaleString()} in 24h</span></div>
-    <div class="tile"><b>${(conc * 100).toFixed(0)}%</b>
-      <span>attention in the top three names</span></div>
-    <div class="tile"><b>${churn === undefined ? 'n/a' : (churn * 100).toFixed(0) + '%'}</b>
-      <span>of the board turned over ${since}</span></div>
-    <div class="tile"><b>${fresh}</b><span>names not here ${since.replace('in the last hour', 'an hour ago')}</span></div>`;
-}
-
-function drawBoard(last) {
-  document.getElementById('now').innerHTML = (last.boards[board] || []).slice(0, 25).map(r => {
-    const d = r.delta_24h, mv = r.rank_change;
-    const dc = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
-    const mc = mv > 0 ? 'up' : (mv < 0 ? 'down' : 'dimc');
-    return `<tr><td class="dimc n">${r.rank}</td>
-      <td class="tk">${r.ticker}${r.new_entry ? '<span class="new">new</span>' : ''}</td>
-      <td class="n">${r.mentions.toLocaleString()}</td>
-      <td class="n ${dc}">${d > 0 ? '+' : ''}${d.toLocaleString()}</td>
-      <td class="n ${mc}">${mv === null || mv === undefined ? 'n/a' : (mv > 0 ? '+' + mv : mv)}</td></tr>`;
-  }).join('');
-}
-
-/* Rank against real time.
+/* What the page is built on, said in numbers.
  *
- * The x position was the observation's index, which drew every reading the
- * same distance apart whatever the clock said. A nineteen hour outage came out
- * looking like one quiet hour. Now x is the timestamp, so a missed hour leaves
- * a hole of the right width, the line breaks across it, and the hole is
- * shaded and labelled rather than smoothed over.
+ * A dashboard that shows a percentage without saying how much was counted to
+ * reach it is asking to be believed rather than checked. This is the size of
+ * the thing: how many boards answered, how many names were seen, how many
+ * mentions were behind them, how long the record runs and how big it is on
+ * disk. All of it comes from the collector, none of it is asserted here.
  */
-function drawBump(obs) {
-  const svg = document.getElementById('bump');
-  const empty = document.getElementById('bump-empty');
-  if (obs.length < 2) {
-    svg.style.display = 'none';
-    empty.hidden = false;
-    empty.textContent = obs.length
-      ? 'One reading on this board. A line needs two.'
-      : 'Nothing recorded on this board yet.';
-    return;
+function drawScale() {
+  const s = L.scale || {};
+  const obs = S.observations || [];
+  const first = L.first_known_at || (obs.length ? obs[0].t : null);
+  const last = L.known_at || (obs.length ? obs[obs.length - 1].t : null);
+  const span = first && last ? (ms(last) - ms(first)) / 3600000 : 0;
+
+  const bytes = n => !n ? null
+    : n > 1e9 ? (n / 1e9).toFixed(1) + ' GB'
+    : n > 1e6 ? (n / 1e6).toFixed(1) + ' MB'
+    : Math.round(n / 1e3) + ' KB';
+
+  const items = [
+    [s.boards_read != null
+      ? fmt(s.boards_read) + (s.boards_possible && s.boards_read !== s.boards_possible
+          ? ' of ' + fmt(s.boards_possible) : '')
+      : null, 'boards read'],
+    [s.rows != null ? fmt(s.rows) : null, 'rows an hour'],
+    [s.tickers != null ? fmt(s.tickers) : null, 'tickers named'],
+    [s.mentions != null ? fmt(s.mentions) : null, 'mentions counted'],
+    [s.upvotes != null ? fmt(s.upvotes) : null, 'upvotes behind them'],
+    [L.readings != null ? fmt(L.readings) : null, 'readings kept'],
+    [span ? (span < 72 ? Math.round(span) + 'h' : Math.round(span / 24) + 'd') : null,
+      'of record'],
+    [bytes(s.archive_bytes), 'archived'],
+  ].filter(([v]) => v !== null && v !== undefined && v !== '');
+
+  $('scale').innerHTML = items.map(([v, k]) =>
+    '<div><dd>' + esc(v) + '</dd><dt>' + esc(k) + '</dt></div>').join('');
+}
+
+function drawTransport(w, at) {
+  const sc = $('scrub');
+  sc.max = String(w.length - 1);
+  sc.value = String(head);
+  sc.setAttribute('aria-valuetext', stampUTC(ms(at.t)));
+  $('back').disabled = head === 0;
+  $('fwd').disabled = head === w.length - 1;
+  $('play').disabled = w.length < 2;
+
+  const isNow = head === w.length - 1;
+  $('travel').dataset.past = String(!isNow);
+  $('now').classList.toggle('on', !isNow);
+  $('now').disabled = isNow;
+
+  const back = (ms(w[w.length - 1].t) - ms(at.t)) / 3600000;
+  $('stamp').innerHTML = '<b>' + esc(stampUTC(ms(at.t))) + '</b><span class="sub">' +
+    (isNow
+      ? 'the newest reading, ' + esc(ago(at.t))
+      : (back < 36 ? Math.round(back) + ' hours' : Math.round(back / 24) + ' days') +
+        ' back &middot; reading ' + fmt(head + 1) + ' of ' + fmt(w.length)) +
+    '</span>';
+}
+
+function drawStrip(rows, prev) {
+  if (!rows.length) { $('run').innerHTML = ''; return; }
+  const before = prev ? rowsAt(prev) : [];
+  const was = new Map(before.map(r => [r.ticker, r.mentions]));
+  const html = rows.slice(0, 16).map(r => {
+    const d = was.has(r.ticker) ? r.mentions - was.get(r.ticker) : null;
+    const c = d === null ? 'dimc' : d > 0 ? 'up' : d < 0 ? 'down' : 'dimc';
+    const g = d === null ? '·' : d > 0 ? '▲' : d < 0 ? '▼' : '·';
+    return '<span class="tick"><b>' + esc(r.ticker) + '</b> ' + fmt(r.mentions) +
+      ' <span class="' + c + '">' + g + (d === null ? '' : fmt(Math.abs(d))) +
+      '</span></span>';
+  }).join('');
+  // Doubled, because the strip slides by half its own width and must never run
+  // out of tape mid-loop.
+  $('run').innerHTML = html + html;
+}
+
+/* ---------------------------------------------------------------------- map */
+
+/* Columns are cut from the clock, not from the list of readings, so an hour
+   nobody recorded still takes its hour of width. A column holds the last
+   reading inside it, which means clicking one lands on a reading that really
+   happened rather than on an average of several. */
+function layout(w) {
+  const t0 = ms(w[0].t), t1 = ms(w[w.length - 1].t);
+  const expected = S.expected_gap_hours || 1;
+  const width = $('hm').clientWidth || 900;
+  const room = Math.max(6, Math.floor((width - LABEL_W) / MIN_CELL));
+
+  const spanH = Math.max((t1 - t0) / 3600000, expected);
+  let stepH = expected * STEPS_H[STEPS_H.length - 1];
+  for (const s of STEPS_H) {
+    if (spanH / (expected * s) + 1 <= room) { stepH = expected * s; break; }
   }
-  svg.style.display = '';
-  empty.hidden = true;
+  while (spanH / stepH + 1 > room) stepH *= 2;   // longer than the widest step
 
-  const W = 1000, H = 430, L = 34, R = 112, T = 14, B = 30, DEPTH = 10;
-  const expected = SERIES.expected_gap_hours || 1;
-  const BREAK = expected * 1.75;          // wider than this and the hour was missed
+  const step = stepH * 3600000;
+  const n = Math.max(1, Math.floor((t1 - t0) / step) + 1);
+  const out = [];
+  for (let i = 0; i < n; i++) out.push({ i: i, obs: null, at: null });
+  w.forEach((o, idx) => {
+    const c = Math.min(n - 1, Math.floor((ms(o.t) - t0) / step));
+    out[c].obs = o; out[c].at = idx;             // the last one in a column wins
+  });
+  return { cols: out, stepH: stepH, t0: t0, step: step };
+}
 
-  const t0 = new Date(obs[0].t).getTime();
-  const t1 = new Date(obs[obs.length - 1].t).getTime();
-  const span = Math.max(t1 - t0, 1);
-  const x = iso => L + (W - L - R) * ((new Date(iso).getTime() - t0) / span);
-  const y = rank => T + (H - T - B) * ((rank - 1) / (DEPTH - 1));
+function drawMap(w, at, rowsNow) {
+  const hm = $('hm'), hmx = $('hmx');
+  const lay = layout(w);
+  cols = lay.cols;
 
-  let out = '';
+  // Which tickers get a row: everything that reached the top of this board at
+  // any point in the window, ordered by where it stands at the playhead, so
+  // the map reshuffles as the reader travels. Names that are off the board at
+  // the playhead fall below the ones that are on it, best rank first.
+  const best = new Map(), nowRank = new Map();
+  w.forEach(o => rowsAt(o).forEach(r => {
+    if (!best.has(r.ticker) || r.rank < best.get(r.ticker)) best.set(r.ticker, r.rank);
+  }));
+  rowsNow.forEach(r => nowRank.set(r.ticker, r.rank));
+  rowTickers = [...best.keys()].sort((a, b) => {
+    const ra = nowRank.has(a) ? nowRank.get(a) : 900 + best.get(a);
+    const rb = nowRank.has(b) ? nowRank.get(b) : 900 + best.get(b);
+    return ra - rb || (a < b ? -1 : a > b ? 1 : 0);
+  }).slice(0, MAX_ROWS);
 
-  // Missed stretches first, so the lines sit on top of them.
-  const missed = missedHours(obs);
-  for (let i = 1; i < obs.length; i++) {
-    const hrs = (new Date(obs[i].t) - new Date(obs[i - 1].t)) / 3600000;
-    if (hrs <= BREAK) continue;
-    const a = x(obs[i - 1].t), b = x(obs[i].t);
-    out += `<rect class="gap-band" x="${a.toFixed(1)}" y="${T}" ` +
-           `width="${Math.max(b - a, 1).toFixed(1)}" height="${H - T - B}"/>` +
-           `<line class="gap-edge" x1="${a.toFixed(1)}" y1="${T}" x2="${a.toFixed(1)}" y2="${H - B}"/>` +
-           `<line class="gap-edge" x1="${b.toFixed(1)}" y1="${T}" x2="${b.toFixed(1)}" y2="${H - B}"/>`;
-    if (b - a > 40) {
-      out += `<text class="gap-note" x="${((a + b) / 2).toFixed(1)}" y="${H - B + 12}" ` +
-             `text-anchor="middle">${Math.round(hrs)}h not recorded</text>`;
-    }
+  const n = cols.length;
+  const tmpl = 'minmax(' + (LABEL_W - 18) + 'px,' + LABEL_W + 'px) repeat(' +
+    n + ',minmax(0,1fr))';
+  hm.style.gridTemplateColumns = tmpl;
+  hmx.style.gridTemplateColumns = tmpl;
+
+  const headCol = cols.findIndex(c => c.at === head);
+  const lastCol = cols.length - 1;
+  let html = '<div></div>';
+  for (let i = 0; i < n; i++) {
+    html += '<div class="colhead"' + (i === headCol ? ' data-play' : '') +
+      (i === lastCol && i !== headCol ? ' data-now' : '') + '></div>';
   }
 
-  for (let k = 1; k <= DEPTH; k++) {
-    out += `<line class="grid-line" x1="${L}" y1="${y(k)}" x2="${W - R}" y2="${y(k)}"/>` +
-           `<text class="axis" x="${L - 8}" y="${y(k) + 3}" text-anchor="end">${k}</text>`;
-  }
-
-  const tracked = new Set();
-  obs.forEach(o => Object.entries(o.r[board] || {})
-    .forEach(([tk, rank]) => { if (rank <= DEPTH) tracked.add(tk); }));
-
-  [...tracked].forEach((ticker, idx) => {
-    const colour = PALETTE[idx % PALETTE.length];
-    let d = '', last = null, drawn = 0;
-    obs.forEach(o => {
-      const rank = (o.r[board] || {})[ticker];
-      if (!rank || rank > DEPTH) { last = null; return; }
-      // Break the stroke across a gap rather than bridging it.
-      const jump = last && (new Date(o.t) - new Date(last)) / 3600000 > BREAK;
-      d += (last && !jump ? 'L' : 'M') + x(o.t).toFixed(1) + ' ' + y(rank).toFixed(1) + ' ';
-      last = o.t;
-      drawn++;
-    });
-    if (drawn < 2) return;
-    out += `<path class="bump-line" stroke="${colour}" d="${d.trim()}"/>`;
-
-    const endRank = (obs[obs.length - 1].r[board] || {})[ticker];
-    if (endRank && endRank <= DEPTH) {
-      out += `<circle class="bump-dot" cx="${x(obs[obs.length - 1].t).toFixed(1)}" ` +
-             `cy="${y(endRank)}" r="3.6" fill="${colour}"/>` +
-             `<text class="bump-label" x="${W - R + 9}" y="${y(endRank) + 4}" ` +
-             `fill="${colour}">${ticker}</text>`;
+  rowTickers.forEach((tk, r) => {
+    const on = tk === picked;
+    html += '<button class="lab" type="button" data-tk="' + esc(tk) +
+      '" aria-pressed="' + on + '">' + esc(tk) + '</button>';
+    for (let i = 0; i < n; i++) {
+      const c = cols[i];
+      if (!c.obs) { html += '<div class="cell" data-gap data-c="' + i + '"></div>'; continue; }
+      const share = shareOf(c.obs, tk);
+      html += '<div class="cell" data-h="' + binOf(share) + '" data-c="' + i +
+        '" data-r="' + r + '"></div>';
     }
   });
 
-  // Time ticks, spaced by the clock and not by the reading count.
-  const step = niceStep(span / 3600000);
-  for (let h = 0; ; h += step) {
-    const at = t0 + h * 3600000;
-    if (at > t1 + 1) break;
-    const px = L + (W - L - R) * ((at - t0) / span);
-    out += `<text class="axis" x="${px.toFixed(1)}" y="${H - 8}" text-anchor="${
-      h === 0 ? 'start' : 'middle'}">${stamp(at, step)}</text>`;
+  hm.innerHTML = html;
+
+  // At most six time labels, always including the newest column.
+  const every = Math.max(1, Math.ceil(n / 6));
+  let xs = '<div></div>';
+  for (let i = 0; i < n; i++) {
+    const show = (n - 1 - i) % every === 0;
+    const t = lay.t0 + i * lay.step;
+    xs += '<span>' + (show
+      ? esc(stampUTC(t, lay.stepH >= 24).replace(' UTC', '')) : '') + '</span>';
+  }
+  hmx.innerHTML = xs;
+
+  const missing = cols.filter(c => !c.obs).length;
+  $('legend').hidden = false;
+  $('bucket-note').textContent =
+    (lay.stepH === 1 ? 'one column per hour'
+      : 'one column per ' + lay.stepH + ' hours, showing its last reading') +
+    (missing ? ' · ' + missing + ' column' + (missing === 1 ? '' : 's') +
+      ' with nothing recorded' : '');
+  $('map-hint').textContent =
+    'Each row is a ticker, each column ' +
+    (lay.stepH === 1 ? 'one hour' : lay.stepH + ' hours') +
+    '. Brighter is a larger share of everything the board said. Click a column ' +
+    'to travel there, or a name to open it below.';
+  hm.setAttribute('role', 'img');
+  hm.setAttribute('aria-label', rowTickers.length + ' tickers across ' + n +
+    ' time columns on ' + (LABEL[board] || board) +
+    '. The table on this page lists the values at the playhead.');
+}
+
+function wireMap() {
+  const hm = $('hm'), tip = $('tip');
+
+  hm.addEventListener('click', e => {
+    const lab = e.target.closest('[data-tk]');
+    if (lab) { picked = lab.dataset.tk; stop(); draw(); return; }
+    const cell = e.target.closest('[data-c]');
+    if (!cell) return;
+    const c = cols[Number(cell.dataset.c)];
+    if (c && c.at !== null) { stop(); seek(c.at); }
+  });
+
+  hm.addEventListener('mousemove', e => {
+    const cell = e.target.closest('[data-c]');
+    const c = cell ? cols[Number(cell.dataset.c)] : null;
+    if (!c) { tip.removeAttribute('data-on'); return; }
+    const r = cell.dataset.r === undefined ? null : rowTickers[Number(cell.dataset.r)];
+    let body;
+    if (!c.obs) {
+      body = '<b>nothing recorded</b><s>no reading fell in this column</s>';
+    } else if (r === null) {
+      body = '<s>' + esc(stampUTC(ms(c.obs.t))) + '</s>';
+    } else {
+      const share = shareOf(c.obs, r);
+      const rows = rowsAt(c.obs);
+      const row = rows.find(x => x.ticker === r);
+      body = '<b>' + esc(r) + '</b> ' + (share === null
+        ? 'below the top ' + rows.length + ' on this board'
+        : pct(share) + ' of the board · #' + row.rank + ' · ' +
+          fmt(row.mentions) + ' mentions') +
+        '<s>' + esc(stampUTC(ms(c.obs.t))) + '</s>';
+    }
+    tip.innerHTML = body;
+    tip.setAttribute('data-on', '');
+    const box = cell.getBoundingClientRect();
+    const half = tip.offsetWidth / 2 + 6;
+    tip.style.left = Math.max(half, Math.min(innerWidth - half,
+      box.left + box.width / 2)) + 'px';
+    tip.style.top = (box.top - 8) + 'px';
+  });
+  hm.addEventListener('mouseleave', () => tip.removeAttribute('data-on'));
+  addEventListener('scroll', () => tip.removeAttribute('data-on'), { passive: true });
+}
+
+/* ----------------------------------------------------------------- close-up */
+
+function drawFocus(w, at) {
+  const svg = $('line'), empty = $('focus-empty'), title = $('focus-head');
+  if (!picked) {
+    svg.style.display = 'none'; empty.hidden = false;
+    empty.textContent = 'No ticker to open.'; title.innerHTML = '';
+    $('focus-alt').textContent = ''; return;
+  }
+
+  const pts = w.map(o => ({ t: ms(o.t), v: shareOf(o, picked) }));
+  const seen = pts.filter(p => p.v !== null);
+  const nowShare = shareOf(at, picked);
+  const others = pts.filter(p => p.t !== ms(at.t) && p.v !== null).map(p => p.v);
+  const usual = median(others);
+  const times = usual > 0 && nowShare ? nowShare / usual : null;
+
+  // Headline. A multiple only means something with a few readings behind it,
+  // so below that it states the plain figure instead of inventing a baseline.
+  const rows = rowsAt(at);
+  const row = rows.find(r => r.ticker === picked);
+  let tail;
+  if (!row) {
+    tail = '<em>below the top ' + rows.length + ' on this board at this hour</em>';
+  } else {
+    tail = '<em>' + pct(row.share) + ' of the board &middot; #' + row.rank +
+      ' &middot; ' + fmt(row.mentions) + ' mentions</em>';
+    if (others.length >= 5 && times) {
+      const hot = times >= 1.6, cold = times <= 0.62;
+      tail += ' <span class="badge ' + (hot ? 'hot' : 'cool') + '">' +
+        (hot ? times.toFixed(1) + '× its usual'
+          : cold ? (1 / times).toFixed(1) + '× quieter than usual'
+            : 'about its usual') + '</span>';
+    }
+  }
+  title.innerHTML = '<b>' + esc(picked) + '</b>' + tail;
+
+  if (seen.length < 2) {
+    svg.style.display = 'none'; empty.hidden = false;
+    empty.textContent = seen.length
+      ? picked + ' appears in one reading of this range. A line needs two.'
+      : picked + ' does not appear in this range.';
+    $('focus-alt').textContent = '';
+    return;
+  }
+  svg.style.display = ''; empty.hidden = true;
+
+  const W = 1000, H = 240, Lm = 48, Rm = 14, T = 12, B = 26;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const span = Math.max(t1 - t0, 1);
+  const peak = Math.max.apply(null, seen.map(p => p.v));
+  const top = Math.max(peak * 1.15, 0.005);
+  const x = t => Lm + (W - Lm - Rm) * ((t - t0) / span);
+  const y = v => T + (H - T - B) * (1 - v / top);
+  const BREAK = (S.expected_gap_hours || 1) * 1.75 * 3600000;
+  const dp = top < 0.04 ? 2 : 1;
+
+  let out = '';
+
+  // Stretches the tape does not cover, drawn first so the line sits on them.
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].t - pts[i - 1].t <= BREAK) continue;
+    const a = x(pts[i - 1].t), b = x(pts[i].t);
+    out += '<rect class="gapband" x="' + a.toFixed(1) + '" y="' + T + '" width="' +
+      Math.max(b - a, 1).toFixed(1) + '" height="' + (H - T - B) + '"/>';
+  }
+
+  for (let g = 0; g <= 3; g++) {
+    const v = top * g / 3, yy = y(v).toFixed(1);
+    out += '<line class="gridline" x1="' + Lm + '" y1="' + yy + '" x2="' +
+      (W - Rm) + '" y2="' + yy + '"/><text class="axis" x="' + (Lm - 7) +
+      '" y="' + (y(v) + 3).toFixed(1) + '" text-anchor="end">' + pct(v, dp) + '</text>';
+  }
+
+  // Area and line, broken wherever the record is.
+  let d = '', area = '', open = false, runFrom = null;
+  const close = upto => {
+    if (!open) return;
+    area += 'L' + x(upto).toFixed(1) + ' ' + y(0).toFixed(1) +
+      'L' + x(runFrom).toFixed(1) + ' ' + y(0).toFixed(1) + 'Z';
+    open = false;
+  };
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const jump = i > 0 && p.t - pts[i - 1].t > BREAK;
+    if (jump) close(pts[i - 1].t);
+    if (p.v === null) { close(i > 0 ? pts[i - 1].t : p.t); continue; }
+    if (!open) {
+      d += 'M' + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1);
+      area += 'M' + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1);
+      runFrom = p.t; open = true;
+    } else {
+      d += 'L' + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1);
+      area += 'L' + x(p.t).toFixed(1) + ' ' + y(p.v).toFixed(1);
+    }
+  }
+  close(pts[pts.length - 1].v !== null ? pts[pts.length - 1].t : t1);
+  out += '<path class="ln-area" d="' + area + '"/><path class="ln" d="' + d + '"/>';
+
+  if (others.length >= 5 && usual > 0) {
+    const yy = y(usual).toFixed(1);
+    out += '<line class="ln-usual" x1="' + Lm + '" y1="' + yy + '" x2="' + (W - Rm) +
+      '" y2="' + yy + '"/><text class="axis" x="' + (Lm + 5) + '" y="' +
+      (y(usual) - 6).toFixed(1) + '" text-anchor="start">its usual, ' +
+      pct(usual, dp) + '</text>';
+  }
+
+  // The playhead, the one thing tying this chart to every other panel.
+  const hx = x(ms(at.t)).toFixed(1);
+  out += '<line class="ln-head" x1="' + hx + '" y1="' + T + '" x2="' + hx +
+    '" y2="' + (H - B) + '"/>';
+  if (nowShare !== null) {
+    out += '<circle cx="' + hx + '" cy="' + y(nowShare).toFixed(1) +
+      '" r="4.5" fill="var(--focus)" stroke="var(--panel)" stroke-width="2"/>';
+  }
+
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const t = t0 + span * i / ticks;
+    out += '<text class="axis" x="' + x(t).toFixed(1) + '" y="' + (H - 7) +
+      '" text-anchor="' + (i === 0 ? 'start' : i === ticks ? 'end' : 'middle') +
+      '">' + esc(stampUTC(t, span > 36 * 3600000).replace(' UTC', '')) + '</text>';
   }
 
   svg.innerHTML = out;
-  document.getElementById('chart-hint').innerHTML =
-    'Down is climbing. Time is to scale' +
-    (missed ? ', and <span class="down">' + missed +
-      ' unrecorded hour' + (missed === 1 ? '' : 's') + '</span> in this range show as gaps.'
-     : ', and every hour in this range was recorded.');
+  $('focus-alt').textContent = picked + ' share of ' + (LABEL[board] || board) +
+    ' mentions, ' + seen.length + ' readings from ' + stampUTC(t0) + ' to ' +
+    stampUTC(t1) + '. Highest ' + pct(peak) + ', lowest ' +
+    pct(Math.min.apply(null, seen.map(p => p.v))) + ', usual ' + pct(usual) + '.';
 }
 
-function niceStep(totalHours) {
-  for (const s of [1, 2, 3, 6, 12, 24, 48, 72, 168]) if (totalHours / s <= 6) return s;
-  return 336;
+/* -------------------------------------------------------------------- tiles */
+
+function drawTiles(w, at, rows, prev) {
+  $('moment-hint').textContent = rows.length
+    ? 'Every figure here is as of ' + stampUTC(ms(at.t)) + '.'
+    : 'This board did not answer at this reading.';
+  if (!rows.length) { $('tiles').innerHTML = ''; return; }
+
+  const top = rows[0];
+  const conc = rows.slice(0, 3).reduce((a, r) => a + r.share, 0);
+  const churn = at.c;
+  const before = prev ? rowsAt(prev) : [];
+  const was = new Map(before.map(r => [r.ticker, r]));
+  const fresh = before.length ? rows.filter(r => !was.has(r.ticker)).length : null;
+  const since = sinceWord(at.gap);
+
+  /* The surge: the name furthest above its own normal, rather than the name
+     that moved most in absolute terms, because a large name gaining two per
+     cent is not news and a small one tripling is. It needs a baseline, so it
+     needs history, and it is only computed from readings strictly before the
+     playhead so that travelling back cannot see the future. */
+  let surge = null;
+  const past = w.slice(0, head);
+  if (past.length >= 5) {
+    rows.forEach(r => {
+      const hist = [];
+      past.forEach(o => { const v = shareOf(o, r.ticker); if (v !== null) hist.push(v); });
+      if (hist.length < 5) return;
+      const base = median(hist);
+      if (!(base > 0)) return;
+      const mult = r.share / base;
+      if (!surge || mult > surge.mult) surge = { ticker: r.ticker, mult: mult };
+    });
+  }
+
+  // Without a baseline, say what can be said: the biggest jump in mentions
+  // against whatever the previous reading was.
+  let riser = null;
+  if (before.length) {
+    rows.forEach(r => {
+      const b = was.get(r.ticker);
+      const d = r.mentions - (b ? b.mentions : 0);
+      if (!riser || d > riser.d) riser = { ticker: r.ticker, d: d, isNew: !b };
+    });
+  }
+
+  const cards = [];
+  cards.push('<div class="tile wide"><b>' + esc(top.ticker) + '</b><span>loudest, ' +
+    pct(top.share, 0) + ' of every mention on the board</span></div>');
+
+  if (surge && surge.mult >= 1.6) {
+    cards.push('<div class="tile wide"><b>' + esc(surge.ticker) + ' &nbsp;' +
+      surge.mult.toFixed(1) + '×</b><span>its own normal share, the furthest ' +
+      'any name on this board sits from where it usually does</span></div>');
+  } else if (riser && riser.d > 0) {
+    cards.push('<div class="tile wide"><b>' + esc(riser.ticker) + ' &nbsp;+' +
+      fmt(riser.d) + '</b><span>biggest gain in mentions ' + esc(since) +
+      (riser.isNew ? ', and new to the board' : '') + '</span></div>');
+  }
+
+  cards.push('<div class="tile"><b>' + pct(conc, 0) +
+    '</b><span>of attention in the top three names</span></div>');
+  cards.push('<div class="tile"><b>' +
+    (churn === undefined || churn === null ? '—' : pct(churn, 0)) +
+    '</b><span>of the board turned over ' + esc(since) + '</span></div>');
+  if (fresh !== null) {
+    cards.push('<div class="tile"><b>' + fresh + '</b><span>' +
+      (fresh === 1 ? 'name that was' : 'names that were') + ' not here ' +
+      esc(since) + '</span></div>');
+  }
+  cards.push('<div class="tile"><b>' + fmt(boardTotal(at)) +
+    '</b><span>mentions across the whole board</span></div>');
+
+  $('tiles').innerHTML = cards.join('');
 }
 
-function stamp(ms, step) {
-  const d = new Date(ms);
-  const p = n => String(n).padStart(2, '0');
-  return step >= 24
-    ? p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate())
-    : p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+function boardTotal(o) {
+  return o && o.m ? o.m : 0;
+}
+
+/* -------------------------------------------------------------------- table */
+
+function drawTable(w, at, rows, prev) {
+  $('table-cap').textContent = (LABEL[board] || board) + ' at ' + stampUTC(ms(at.t));
+  if (!rows.length) { $('rows').innerHTML = ''; return; }
+
+  const before = prev ? rowsAt(prev) : [];
+  const was = new Map(before.map(r => [r.ticker, r]));
+
+  /* The 24h column is measured against our own tape rather than the API's
+     rolling figure, so it still means something when the playhead is a week
+     back. It needs a reading near enough to 24 hours before this one, and says
+     nothing when there is not one. */
+  const target = ms(at.t) - 24 * 3600000;
+  let dayAgo = null, closest = 2.5 * 3600000;
+  readings().forEach(o => {
+    const d = Math.abs(ms(o.t) - target);
+    if (d < closest) { closest = d; dayAgo = o; }
+  });
+  const then = dayAgo ? new Map(rowsAt(dayAgo).map(r => [r.ticker, r])) : null;
+  const cls = v => v > 0 ? 'up' : v < 0 ? 'down' : 'dimc';
+
+  $('rows').innerHTML = rows.map(r => {
+    const b = was.get(r.ticker);
+    const move = b ? b.rank - r.rank : null;
+    const isNew = before.length ? !b : false;
+    const d24 = then && then.has(r.ticker)
+      ? r.mentions - then.get(r.ticker).mentions : null;
+    return '<tr' + (r.ticker === picked ? ' data-sel' : '') + '>' +
+      '<td class="n dimc">' + r.rank + '</td>' +
+      '<td class="tk"><button type="button" data-pick="' + esc(r.ticker) + '">' +
+        esc(r.ticker) + '</button>' + (isNew ? '<span class="new">new</span>' : '') + '</td>' +
+      '<td class="n">' + fmt(r.mentions) + '</td>' +
+      '<td class="n dimc">' + pct(r.share, r.share < 0.01 ? 2 : 1) + '</td>' +
+      '<td class="n ' + (d24 === null ? 'dimc' : cls(d24)) + '">' +
+        (d24 === null ? '—' : (d24 > 0 ? '+' : '') + fmt(d24)) + '</td>' +
+      '<td class="n ' + (move === null ? 'dimc' : cls(move)) + '">' +
+        (move === null ? '—' : move === 0 ? '·' : move > 0 ? '+' + move : String(move)) +
+      '</td></tr>';
+  }).join('');
 }
 </script>
 </body>

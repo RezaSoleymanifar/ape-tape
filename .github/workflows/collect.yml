@@ -45,8 +45,9 @@ jobs:
       # with nothing behind it is worse than no line, so this fails the job.
       - name: A reading must have its raw response
         run: |
-          tape=$(git status --porcelain data/tape | wc -l)
-          raw=$(git status --porcelain data/raw | wc -l)
+          set -euo pipefail
+          tape=$(git status --porcelain -- 'data/tape/*.jsonl' | wc -l)
+          raw=$(git status --porcelain -- data/raw | wc -l)
           if [ "$tape" -eq 0 ]; then
             echo "no new reading this run, nothing to check"
             exit 0
@@ -60,6 +61,7 @@ jobs:
 
       - name: Commit the reading
         run: |
+          set -euo pipefail
           git config user.name  "ape-tape"
           git config user.email "actions@github.com"
           git add data/raw data/tape docs/latest.json docs/series.json
@@ -68,6 +70,18 @@ jobs:
             exit 0
           fi
           git commit -m "tape: $(date -u '+%Y-%m-%d %H:%M UTC')"
-          # Another hour's commit, or a hand edit, may have landed meanwhile.
-          git pull --rebase --autostash origin main
-          git push
+          # The reading now exists only in this commit, on a runner that is
+          # about to be destroyed. Another hour, or a hand edit, may have
+          # landed upstream in the meantime, so rebase and try again rather
+          # than lose it to a single rejected push.
+          for attempt in 1 2 3 4 5; do
+            if git pull --rebase --autostash origin main && git push origin main; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "push attempt $attempt failed, retrying"
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 5))
+          done
+          echo "could not push the reading after five attempts."
+          exit 1
