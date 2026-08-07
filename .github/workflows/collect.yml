@@ -59,12 +59,35 @@ jobs:
           fi
           echo "reading and raw response both present"
 
+      # The guard that would have caught the missing directory. Everything
+      # `write_site` produces is derived from the reading just taken, so if
+      # any of it is still dirty after staging, the run is about to publish a
+      # site that disagrees with its own data.
+      - name: Every derived file is staged
+        run: |
+          set -euo pipefail
+          git add docs/latest.json docs/series.json docs/series
+          left=$(git status --porcelain -- docs/latest.json docs/series.json docs/series)
+          if [ -n "$left" ]; then
+            echo "Derived output was written but not staged:"
+            echo "$left"
+            exit 1
+          fi
+          echo "every derived file is staged"
+
       - name: Commit the reading
         run: |
           set -euo pipefail
           git config user.name  "ape-tape"
           git config user.email "actions@github.com"
-          git add data/raw data/tape docs/latest.json docs/series.json
+          # `docs/series` is the directory, and it was the one thing missing
+          # here. `write_site` writes one file per board into it and the job
+          # staged only the index beside it, so every run published an index
+          # claiming N readings next to board files frozen at whatever was
+          # last committed by hand. The page reads the board files, so the
+          # charts were hours behind the header and drifting one reading an
+          # hour, for as long as nobody looked.
+          git add data/raw data/tape docs/latest.json docs/series.json docs/series
           if git diff --cached --quiet; then
             echo "nothing changed, no reading was taken this run"
             exit 0
