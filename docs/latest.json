@@ -1,117 +1,117 @@
 {
- "known_at": "2026-08-07T13:45:19+00:00",
+ "known_at": "2026-08-07T13:52:08+00:00",
  "churn": {
-  "all-stocks": 0.3,
-  "all-crypto": 0.22
+  "all-stocks": 0.01,
+  "all-crypto": 0.0
  },
  "boards": {
   "all-stocks": [
    {
     "ticker": "HTZ",
     "rank": 1,
-    "mentions": 2304,
-    "delta_24h": 2262,
-    "growth_24h": 53.8571,
+    "mentions": 2311,
+    "delta_24h": 2264,
+    "growth_24h": 48.1702,
     "rank_24h": 42,
-    "share": 0.41239,
-    "upvotes": 11715,
-    "rank_change": 4,
+    "share": 0.41468,
+    "upvotes": 11751,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "SPY",
     "rank": 2,
-    "mentions": 377,
-    "delta_24h": -239,
-    "growth_24h": -0.388,
+    "mentions": 374,
+    "delta_24h": -228,
+    "growth_24h": -0.3787,
     "rank_24h": 0,
-    "share": 0.06748,
-    "upvotes": 1400,
+    "share": 0.06711,
+    "upvotes": 1388,
     "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "SPCX",
     "rank": 3,
-    "mentions": 286,
-    "delta_24h": -125,
-    "growth_24h": -0.3041,
+    "mentions": 284,
+    "delta_24h": -146,
+    "growth_24h": -0.3395,
     "rank_24h": 0,
-    "share": 0.05119,
-    "upvotes": 1981,
+    "share": 0.05096,
+    "upvotes": 1974,
     "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "MU",
     "rank": 4,
-    "mentions": 226,
-    "delta_24h": -117,
-    "growth_24h": -0.3411,
+    "mentions": 224,
+    "delta_24h": -114,
+    "growth_24h": -0.3373,
     "rank_24h": 0,
-    "share": 0.04045,
-    "upvotes": 515,
+    "share": 0.04019,
+    "upvotes": 507,
     "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "SNDK",
     "rank": 5,
-    "mentions": 166,
-    "delta_24h": -894,
-    "growth_24h": -0.8434,
+    "mentions": 161,
+    "delta_24h": -901,
+    "growth_24h": -0.8484,
     "rank_24h": -4,
-    "share": 0.02971,
-    "upvotes": 468,
-    "rank_change": -4,
+    "share": 0.02889,
+    "upvotes": 461,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "NVDA",
     "rank": 6,
-    "mentions": 135,
-    "delta_24h": -71,
-    "growth_24h": -0.3447,
+    "mentions": 134,
+    "delta_24h": -69,
+    "growth_24h": -0.3399,
     "rank_24h": 0,
-    "share": 0.02416,
-    "upvotes": 259,
-    "rank_change": 2,
+    "share": 0.02404,
+    "upvotes": 258,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "MSFT",
     "rank": 7,
     "mentions": 123,
-    "delta_24h": 47,
-    "growth_24h": 0.6184,
+    "delta_24h": 46,
+    "growth_24h": 0.5974,
     "rank_24h": 7,
-    "share": 0.02202,
-    "upvotes": 609,
-    "rank_change": 6,
+    "share": 0.02207,
+    "upvotes": 608,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "QQQ",
     "rank": 8,
-    "mentions": 116,
-    "delta_24h": -48,
-    "growth_24h": -0.2927,
+    "mentions": 112,
+    "delta_24h": -56,
+    "growth_24h": -0.3333,
     "rank_24h": 0,
-    "share": 0.02076,
-    "upvotes": 277,
-    "rank_change": -1,
+    "share": 0.0201,
+    "upvotes": 268,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "DTE",
     "rank": 9,
     "mentions": 100,
-    "delta_24h": -6,
-    "growth_24h": -0.0566,
+    "delta_24h": -7,
+    "growth_24h": -0.0654,
     "rank_24h": 1,
-    "share": 0.0179,
-    "upvotes": 258,
-    "rank_change": 3,
+    "share": 0.01794,
+    "upvotes": 259,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -121,33 +121,33 @@
     "delta_24h": 94,
     "growth_24h": 94.0,
     "rank_24h": 378,
-    "share": 0.017,
+    "share": 0.01705,
     "upvotes": 243,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "NBIS",
     "rank": 11,
     "mentions": 92,
-    "delta_24h": 64,
-    "growth_24h": 2.2857,
+    "delta_24h": 66,
+    "growth_24h": 2.5385,
     "rank_24h": 17,
-    "share": 0.01647,
-    "upvotes": 194,
-    "rank_change": 8,
+    "share": 0.01651,
+    "upvotes": 193,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "META",
     "rank": 12,
     "mentions": 61,
-    "delta_24h": 24,
-    "growth_24h": 0.6486,
+    "delta_24h": 26,
+    "growth_24h": 0.7429,
     "rank_24h": 6,
-    "share": 0.01092,
+    "share": 0.01095,
     "upvotes": 416,
-    "rank_change": 4,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -157,9 +157,9 @@
     "delta_24h": 30,
     "growth_24h": 1.0,
     "rank_24h": 17,
-    "share": 0.01074,
-    "upvotes": 225,
-    "rank_change": 12,
+    "share": 0.01077,
+    "upvotes": 220,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -169,10 +169,10 @@
     "delta_24h": 54,
     "growth_24h": null,
     "rank_24h": null,
-    "share": 0.00967,
+    "share": 0.00969,
     "upvotes": 180,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "AAOI",
@@ -181,21 +181,21 @@
     "delta_24h": 37,
     "growth_24h": 2.4667,
     "rank_24h": 40,
-    "share": 0.00931,
+    "share": 0.00933,
     "upvotes": 82,
-    "rank_change": 15,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "AMD",
     "rank": 16,
-    "mentions": 50,
-    "delta_24h": -187,
-    "growth_24h": -0.789,
+    "mentions": 49,
+    "delta_24h": -175,
+    "growth_24h": -0.7812,
     "rank_24h": -11,
-    "share": 0.00895,
-    "upvotes": 95,
-    "rank_change": -7,
+    "share": 0.00879,
+    "upvotes": 91,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -205,45 +205,45 @@
     "delta_24h": 43,
     "growth_24h": 21.5,
     "rank_24h": 178,
-    "share": 0.00805,
-    "upvotes": 389,
-    "rank_change": null,
-    "new_entry": true
+    "share": 0.00807,
+    "upvotes": 388,
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "GOOGL",
     "rank": 18,
-    "mentions": 44,
+    "mentions": 43,
     "delta_24h": -77,
-    "growth_24h": -0.6364,
+    "growth_24h": -0.6417,
     "rank_24h": -9,
-    "share": 0.00788,
-    "upvotes": 104,
-    "rank_change": -1,
+    "share": 0.00772,
+    "upvotes": 102,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "ASTS",
     "rank": 19,
     "mentions": 41,
-    "delta_24h": 14,
-    "growth_24h": 0.5185,
+    "delta_24h": 13,
+    "growth_24h": 0.4643,
     "rank_24h": 10,
-    "share": 0.00734,
-    "upvotes": 80,
-    "rank_change": 1,
+    "share": 0.00736,
+    "upvotes": 82,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "RKLB",
     "rank": 20,
-    "mentions": 41,
-    "delta_24h": 17,
-    "growth_24h": 0.7083,
+    "mentions": 39,
+    "delta_24h": 14,
+    "growth_24h": 0.56,
     "rank_24h": 7,
-    "share": 0.00734,
-    "upvotes": 95,
-    "rank_change": 7,
+    "share": 0.007,
+    "upvotes": 93,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -253,10 +253,10 @@
     "delta_24h": 36,
     "growth_24h": 36.0,
     "rank_24h": 466,
-    "share": 0.00662,
+    "share": 0.00664,
     "upvotes": 92,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "OPEN",
@@ -265,33 +265,33 @@
     "delta_24h": 28,
     "growth_24h": 3.1111,
     "rank_24h": 53,
-    "share": 0.00662,
-    "upvotes": 166,
-    "rank_change": 28,
-    "new_entry": false
-   },
-   {
-    "ticker": "AAPL",
-    "rank": 23,
-    "mentions": 36,
-    "delta_24h": -31,
-    "growth_24h": -0.4627,
-    "rank_24h": -8,
-    "share": 0.00644,
-    "upvotes": 58,
-    "rank_change": -8,
+    "share": 0.00664,
+    "upvotes": 164,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "TSLA",
-    "rank": 24,
+    "rank": 23,
     "mentions": 36,
-    "delta_24h": -17,
-    "growth_24h": -0.3208,
-    "rank_24h": -7,
-    "share": 0.00644,
+    "delta_24h": -16,
+    "growth_24h": -0.3077,
+    "rank_24h": -6,
+    "share": 0.00646,
     "upvotes": 252,
-    "rank_change": -6,
+    "rank_change": 1,
+    "new_entry": false
+   },
+   {
+    "ticker": "AAPL",
+    "rank": 24,
+    "mentions": 35,
+    "delta_24h": -32,
+    "growth_24h": -0.4776,
+    "rank_24h": -9,
+    "share": 0.00628,
+    "upvotes": 59,
+    "rank_change": -1,
     "new_entry": false
    },
    {
@@ -301,9 +301,9 @@
     "delta_24h": 28,
     "growth_24h": 5.6,
     "rank_24h": 69,
-    "share": 0.00591,
+    "share": 0.00592,
     "upvotes": 67,
-    "rank_change": 52,
+    "rank_change": 0,
     "new_entry": false
    }
   ],
@@ -315,7 +315,7 @@
     "delta_24h": 4,
     "growth_24h": 0.0312,
     "rank_24h": 0,
-    "share": 0.3558,
+    "share": 0.35772,
     "upvotes": 442,
     "rank_change": 0,
     "new_entry": false
@@ -323,24 +323,24 @@
    {
     "ticker": "ETH.X",
     "rank": 2,
-    "mentions": 87,
-    "delta_24h": -1,
-    "growth_24h": -0.0114,
+    "mentions": 86,
+    "delta_24h": 0,
+    "growth_24h": 0.0,
     "rank_24h": 0,
-    "share": 0.2345,
-    "upvotes": 333,
+    "share": 0.23306,
+    "upvotes": 298,
     "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "LST.X",
     "rank": 3,
-    "mentions": 9,
-    "delta_24h": -2,
-    "growth_24h": -0.1818,
+    "mentions": 8,
+    "delta_24h": -3,
+    "growth_24h": -0.2727,
     "rank_24h": 0,
-    "share": 0.02426,
-    "upvotes": 26,
+    "share": 0.02168,
+    "upvotes": 25,
     "rank_change": 0,
     "new_entry": false
    },
@@ -351,10 +351,10 @@
     "delta_24h": 6,
     "growth_24h": 6.0,
     "rank_24h": 154,
-    "share": 0.01887,
+    "share": 0.01897,
     "upvotes": 29,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "USDC.X",
@@ -363,9 +363,9 @@
     "delta_24h": 3,
     "growth_24h": 1.0,
     "rank_24h": -1,
-    "share": 0.01617,
+    "share": 0.01626,
     "upvotes": 13,
-    "rank_change": 2,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -375,10 +375,10 @@
     "delta_24h": 5,
     "growth_24h": 5.0,
     "rank_24h": 186,
-    "share": 0.01617,
+    "share": 0.01626,
     "upvotes": 20,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "UNI.X",
@@ -387,10 +387,10 @@
     "delta_24h": 4,
     "growth_24h": null,
     "rank_24h": null,
-    "share": 0.01078,
+    "share": 0.01084,
     "upvotes": 9,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "BC.X",
@@ -399,10 +399,10 @@
     "delta_24h": 4,
     "growth_24h": null,
     "rank_24h": 93,
-    "share": 0.01078,
+    "share": 0.01084,
     "upvotes": 9,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "TX.X",
@@ -411,10 +411,10 @@
     "delta_24h": 3,
     "growth_24h": 3.0,
     "rank_24h": 10,
-    "share": 0.01078,
+    "share": 0.01084,
     "upvotes": 22,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "MB.X",
@@ -423,10 +423,10 @@
     "delta_24h": 3,
     "growth_24h": 3.0,
     "rank_24h": 103,
-    "share": 0.01078,
+    "share": 0.01084,
     "upvotes": 14,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "USDT.X",
@@ -435,21 +435,21 @@
     "delta_24h": 2,
     "growth_24h": 2.0,
     "rank_24h": 9,
-    "share": 0.00809,
+    "share": 0.00813,
     "upvotes": 18,
-    "rank_change": 4,
+    "rank_change": 0,
     "new_entry": false
    },
    {
     "ticker": "APY.X",
     "rank": 12,
     "mentions": 3,
-    "delta_24h": 1,
-    "growth_24h": 0.5,
+    "delta_24h": 0,
+    "growth_24h": 0.0,
     "rank_24h": 67,
-    "share": 0.00809,
+    "share": 0.00813,
     "upvotes": 5,
-    "rank_change": 69,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -459,9 +459,9 @@
     "delta_24h": -3,
     "growth_24h": -0.5,
     "rank_24h": -7,
-    "share": 0.00809,
+    "share": 0.00813,
     "upvotes": 5,
-    "rank_change": -4,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -471,9 +471,9 @@
     "delta_24h": 0,
     "growth_24h": 0.0,
     "rank_24h": -2,
-    "share": 0.00809,
+    "share": 0.00813,
     "upvotes": 5,
-    "rank_change": -4,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -483,10 +483,10 @@
     "delta_24h": 2,
     "growth_24h": 2.0,
     "rank_24h": 136,
-    "share": 0.00809,
+    "share": 0.00813,
     "upvotes": 25,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "HBAR.X",
@@ -495,9 +495,9 @@
     "delta_24h": -1,
     "growth_24h": -0.3333,
     "rank_24h": -1,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": -2,
-    "rank_change": -2,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -507,9 +507,9 @@
     "delta_24h": 1,
     "growth_24h": 1.0,
     "rank_24h": 19,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": 5,
-    "rank_change": 20,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -519,10 +519,10 @@
     "delta_24h": 2,
     "growth_24h": null,
     "rank_24h": 45,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": 32,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "OG.X",
@@ -531,9 +531,9 @@
     "delta_24h": 1,
     "growth_24h": 1.0,
     "rank_24h": 43,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": 4,
-    "rank_change": 45,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -543,9 +543,9 @@
     "delta_24h": -4,
     "growth_24h": -0.6667,
     "rank_24h": -15,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": 5,
-    "rank_change": -16,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -555,9 +555,9 @@
     "delta_24h": 1,
     "growth_24h": 1.0,
     "rank_24h": 64,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": 11,
-    "rank_change": 67,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -567,9 +567,9 @@
     "delta_24h": -1,
     "growth_24h": -0.3333,
     "rank_24h": -13,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": 94,
-    "rank_change": -17,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -579,10 +579,10 @@
     "delta_24h": 1,
     "growth_24h": 1.0,
     "rank_24h": 136,
-    "share": 0.00539,
+    "share": 0.00542,
     "upvotes": 3,
-    "rank_change": null,
-    "new_entry": true
+    "rank_change": 0,
+    "new_entry": false
    },
    {
     "ticker": "XRP.X",
@@ -591,9 +591,9 @@
     "delta_24h": -2,
     "growth_24h": -0.6667,
     "rank_24h": -11,
-    "share": 0.0027,
+    "share": 0.00271,
     "upvotes": 1,
-    "rank_change": -8,
+    "rank_change": 0,
     "new_entry": false
    },
    {
@@ -603,9 +603,9 @@
     "delta_24h": -1,
     "growth_24h": -0.5,
     "rank_24h": -4,
-    "share": 0.0027,
+    "share": 0.00271,
     "upvotes": 3,
-    "rank_change": -12,
+    "rank_change": 0,
     "new_entry": false
    }
   ]
