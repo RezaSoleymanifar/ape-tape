@@ -1,12 +1,19 @@
 name: collect
 
-# Hourly. Each run appends one observation and commits it, so the commit
-# timestamp records when the reading happened. Free on public repositories;
-# the job is a few seconds and a few kilobytes.
+# Hourly. Each run appends one reading and commits it, so the commit timestamp
+# records when the reading happened. Free on public repositories; the job is a
+# few seconds and a few kilobytes.
+#
+# Two schedules, not one. GitHub runs cron on a best-effort queue and drops
+# ticks under load, and this repository went nineteen hours without a single
+# scheduled run. A second attempt half an hour later gives every hour two
+# chances to be recorded. `--min-gap 45` means the second attempt does nothing
+# when the first one worked, so the tape stays hourly either way.
 
 on:
   schedule:
-    - cron: "7 * * * *"        # seven past, to stay off the crowded top of the hour
+    - cron: "7 * * * *"
+    - cron: "37 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,7 +26,7 @@ concurrency:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 10           # a hung read must not hold the hour's slot
+    timeout-minutes: 10         # a hung read must not hold the hour's slot
     steps:
       - uses: actions/checkout@v4
 
@@ -30,30 +37,34 @@ jobs:
       - run: pip install --quiet httpx
 
       - name: Read the boards
-        run: python collect.py
+        run: python collect.py --min-gap 45
 
       # The raw response is the only thing that cannot be rebuilt later. This
       # step exists because it once was not committed at all: the run wrote it
-      # to the runner's disk and the runner was then destroyed. A silent gap
-      # in the archive is worse than a failed job, so this fails the job.
-      - name: The raw response must exist
+      # to the runner's disk and the runner was then destroyed. A derived line
+      # with nothing behind it is worse than no line, so this fails the job.
+      - name: A reading must have its raw response
         run: |
-          today=$(date -u '+%Y-%m-%d')
-          n=$(ls data/raw/"$today"/*.json.gz 2>/dev/null | wc -l)
-          if [ "$n" -eq 0 ]; then
-            echo "collect.py wrote no raw file for $today. Refusing to record a"
-            echo "derived line with nothing behind it."
+          tape=$(git status --porcelain data/tape | wc -l)
+          raw=$(git status --porcelain data/raw | wc -l)
+          if [ "$tape" -eq 0 ]; then
+            echo "no new reading this run, nothing to check"
+            exit 0
+          fi
+          if [ "$raw" -eq 0 ]; then
+            echo "A reading was appended with no raw response behind it."
+            echo "Refusing to commit a tape that cannot be rebuilt."
             exit 1
           fi
-          echo "raw files for $today: $n"
+          echo "reading and raw response both present"
 
-      - name: Commit the observation
+      - name: Commit the reading
         run: |
           git config user.name  "ape-tape"
           git config user.email "actions@github.com"
-          git add data/raw data/tape.jsonl docs/latest.json docs/series.json
+          git add data/raw data/tape docs/latest.json docs/series.json
           if git diff --cached --quiet; then
-            echo "nothing changed, the feed returned the same numbers"
+            echo "nothing changed, no reading was taken this run"
             exit 0
           fi
           git commit -m "tape: $(date -u '+%Y-%m-%d %H:%M UTC')"

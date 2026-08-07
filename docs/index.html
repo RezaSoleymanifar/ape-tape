@@ -25,7 +25,8 @@ a{color:var(--hot);text-decoration:none}
 a:hover{text-decoration:underline}
 
 /* ------------------------------------------------------------------ head */
-.bar{display:flex;align-items:center;gap:14px;padding:12px 20px;
+/* flex:none on both, or the column layout squeezes them and clips the text */
+.bar{display:flex;align-items:center;gap:14px;padding:12px 20px;flex:none;
   border-bottom:1px solid var(--line);background:var(--panel)}
 .brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;
   letter-spacing:-.03em;white-space:nowrap}
@@ -45,8 +46,8 @@ a:hover{text-decoration:underline}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* ---------------------------------------------------------------- ticker */
-.ticker{overflow:hidden;white-space:nowrap;padding:9px 0;border-bottom:1px solid var(--line);
-  background:#0e1117;
+.ticker{overflow:hidden;white-space:nowrap;padding:9px 0;flex:none;
+  border-bottom:1px solid var(--line);background:#0e1117;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
   mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
 .run{display:inline-block;white-space:nowrap;animation:slide 70s linear infinite;
@@ -78,6 +79,20 @@ a:hover{text-decoration:underline}
 .axis{font-family:var(--mono);font-size:9.5px;fill:var(--dim)}
 .grid-line{stroke:var(--line);stroke-width:1}
 .empty{color:var(--dim);font-family:var(--mono);font-size:12.5px;padding:70px 0;text-align:center}
+
+.gap-band{fill:var(--down);opacity:.07}
+.gap-edge{stroke:var(--down);stroke-width:1;stroke-dasharray:3 3;opacity:.5}
+.gap-note{font-family:var(--mono);font-size:9px;fill:var(--down);opacity:.85}
+
+/* --------------------------------------------------------------- pickers */
+.picks{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.pick{font-family:var(--mono);font-size:11px;color:var(--dim);cursor:pointer;
+  background:var(--panel2);border:1px solid var(--line);border-radius:999px;
+  padding:4px 11px;line-height:1.4;transition:color .12s,border-color .12s}
+.pick:hover{color:var(--ink);border-color:#2c333f}
+.pick[aria-pressed="true"]{color:var(--bg);background:var(--hot);border-color:var(--hot);
+  font-weight:700}
+.picks.small .pick{font-size:10.5px;padding:3px 9px}
 
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tile{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
@@ -122,20 +137,22 @@ footer p{margin:8px 0 0;max-width:80em}
 
 <div class="grid">
   <div class="card chart">
-    <h2>Rank, hour by hour</h2>
-    <p class="hint">Nine finance subreddits, top of the board. Down is climbing.</p>
-    <svg id="bump" viewBox="0 0 1000 460" role="img" aria-label="Ticker rank over time"></svg>
-    <p class="empty" id="bump-empty" hidden>Two readings needed before a line exists.
-      The tape is one hour old.</p>
+    <h2>Rank over time</h2>
+    <p class="hint" id="chart-hint">Down is climbing. Time is to scale, so a gap
+      in the tape shows as a gap.</p>
+    <div class="picks" id="boards" role="group" aria-label="Board"></div>
+    <div class="picks small" id="ranges" role="group" aria-label="Time range"></div>
+    <svg id="bump" viewBox="0 0 1000 430" role="img" aria-label="Ticker rank over time"></svg>
+    <p class="empty" id="bump-empty" hidden>Two readings needed before a line exists.</p>
   </div>
 
   <div class="card stats">
-    <h2>This hour</h2>
+    <h2 id="stats-head">Latest reading</h2>
     <div class="tiles" id="tiles"></div>
   </div>
 
   <div class="card board">
-    <h2>Loudest right now</h2>
+    <h2 id="board-head">Loudest right now</h2>
     <div class="scroll">
       <table>
         <thead><tr><th></th><th>ticker</th><th class="n">mentions</th>
@@ -155,7 +172,9 @@ footer p{margin:8px 0 0;max-width:80em}
     hourly and keeps what it read. It is not Reddit data: no posts, comments, users or topics are
     exposed or stored. Ticker matching is theirs and unpublished, so common-word symbols
     (<code>OPEN</code>, <code>IT</code>, <code>ALL</code>) and private companies do appear.
-    Each row carries <code>known_at</code>, the time we read it. Unverified, may miss hours,
+    Each row carries <code>known_at</code>, the time we read it, and <code>gap_hours</code>,
+    the real distance back to the reading it is compared against. Hours do get missed, and
+    the chart draws them as gaps rather than smoothing over them. Unverified,
     not investment advice.
     <a href="https://github.com/RezaSoleymanifar/ape-tape">Source</a> ·
     <a href="https://apewisdom.io">ApeWisdom</a> ·
@@ -165,31 +184,125 @@ footer p{margin:8px 0 0;max-width:80em}
 
 <script>
 const PALETTE = ['#f0b429','#3ddc84','#6ba4ff','#ff6b5e','#c792ea','#77cfc9','#ffa94d','#e39ff6'];
-const BOARD = 'all-stocks', CRYPTO = 'all-crypto';
+const CRYPTO = 'all-crypto';
+const RANGES = [['24h', 24], ['7d', 24 * 7], ['30d', 24 * 30], ['all', Infinity]];
 
-fetch('series.json?v=' + Date.now()).then(r => r.json()).then(render)
+// Rendered names for the nine boards. The API's own keys are subreddit slugs.
+const LABEL = {
+  'all-stocks': 'all stocks', 'all-crypto': 'all crypto',
+  'wallstreetbets': 'r/wallstreetbets', 'stocks': 'r/stocks',
+  'cryptocurrency': 'r/cryptocurrency', 'options': 'r/options',
+  'investing': 'r/investing', 'stockmarket': 'r/stockmarket',
+  'pennystocks': 'r/pennystocks',
+};
+
+let SERIES = null, LATEST = null, board = 'all-stocks', hours = 24 * 7;
+
+Promise.all([
+  fetch('series.json?v=' + Date.now()).then(r => r.json()),
+  fetch('latest.json?v=' + Date.now()).then(r => r.json()),
+]).then(([series, latest]) => { SERIES = series; LATEST = latest; boot(); })
   .catch(() => { document.getElementById('meta').textContent = 'tape unavailable'; });
 
-function render(data) {
-  const obs = (data.observations || [])
-    .filter(o => ((o.boards || {})[BOARD] || []).length > 0);
-  if (!obs.length) return;
-  const last = obs[obs.length - 1];
+/* How long ago, said the way a person would say it. */
+function ago(iso) {
+  const mins = (Date.now() - new Date(iso).getTime()) / 60000;
+  if (mins < 90) return Math.round(mins) + ' min ago';
+  const h = mins / 60;
+  if (h < 36) return Math.round(h) + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+}
 
+/* The gap the movement figures actually span, which is not always an hour. */
+function gapWord(gap) {
+  if (gap === null || gap === undefined) return 'since the first reading';
+  if (gap < 1.5) return 'in the last hour';
+  if (gap < 36) return 'over ' + gap.toFixed(gap < 10 ? 1 : 0) + ' hours';
+  return 'over ' + (gap / 24).toFixed(1) + ' days';
+}
+
+function boot() {
+  const boards = (SERIES.boards || []).filter(
+    b => (SERIES.observations || []).some(o => o.r && o.r[b]));
+  if (!boards.includes(board)) board = boards[0];
+
+  document.getElementById('boards').innerHTML = boards.map(b =>
+    `<button class="pick" data-board="${b}" aria-pressed="${b === board}">${
+      LABEL[b] || b}</button>`).join('');
+  document.getElementById('ranges').innerHTML = RANGES.map(([name, h]) =>
+    `<button class="pick" data-hours="${h}" aria-pressed="${h === hours}">${name}</button>`).join('');
+
+  document.getElementById('boards').onclick = e => {
+    const el = e.target.closest('[data-board]');
+    if (!el) return;
+    board = el.dataset.board;
+    document.querySelectorAll('[data-board]').forEach(
+      n => n.setAttribute('aria-pressed', n.dataset.board === board));
+    draw();
+  };
+  document.getElementById('ranges').onclick = e => {
+    const el = e.target.closest('[data-hours]');
+    if (!el) return;
+    hours = Number(el.dataset.hours);
+    document.querySelectorAll('[data-hours]').forEach(
+      n => n.setAttribute('aria-pressed', Number(n.dataset.hours) === hours));
+    draw();
+  };
+
+  drawMeta();
+  draw();
+}
+
+/* Hours that should have been recorded and were not.
+ *
+ * Counted one way only. Two different estimates of the same thing, one in the
+ * header and one under the chart, disagreed by two hours and both looked
+ * authoritative.
+ */
+function missedHours(obs) {
+  const expected = SERIES.expected_gap_hours || 1;
+  let missed = 0;
+  for (let i = 1; i < obs.length; i++) {
+    const hrs = (new Date(obs[i].t) - new Date(obs[i - 1].t)) / 3600000;
+    if (hrs > expected * 1.75) missed += Math.round(hrs / expected) - 1;
+  }
+  return missed;
+}
+
+function drawMeta() {
+  const first = LATEST.first_known_at, last = LATEST.known_at;
+  const span = first && last
+    ? (new Date(last) - new Date(first)) / 3600000 : 0;
+  const missed = missedHours(SERIES.observations || []);
   document.getElementById('meta').innerHTML =
-    '<span class="dot"></span>last read <b>' +
-    last.known_at.replace('T', ' ').replace('+00:00', ' UTC') + '</b>' +
-    ' &nbsp;·&nbsp; ' + obs.length + 'h recorded' +
+    '<span class="dot"></span>last read <b>' + ago(last) + '</b>' +
+    ' &nbsp;·&nbsp; ' + (LATEST.readings || 0).toLocaleString() + ' readings' +
+    ' over ' + (span < 48 ? Math.round(span) + 'h' : (span / 24).toFixed(0) + 'd') +
+    (missed > 0 ? ' &nbsp;·&nbsp; <span class="down">' + missed + ' hour' +
+      (missed === 1 ? '' : 's') + ' missed</span>' : '') +
     ' &nbsp;·&nbsp; <a href="https://github.com/RezaSoleymanifar/ape-tape">source</a>';
+}
 
-  drawTicker(last);
-  drawTiles(last);
-  drawBoard(last);
-  drawBump(obs);
+function draw() {
+  const name = LABEL[board] || board;
+  document.getElementById('stats-head').textContent = 'Latest reading, ' + name;
+  document.getElementById('board-head').textContent = 'Loudest right now, ' + name;
+  drawTicker(LATEST);
+  drawTiles(LATEST);
+  drawBoard(LATEST);
+  drawBump(window_());
+}
+
+/* Observations inside the chosen range, oldest first. */
+function window_() {
+  const obs = (SERIES.observations || []).filter(o => o.r && o.r[board]);
+  if (hours === Infinity || !obs.length) return obs;
+  const cut = new Date(obs[obs.length - 1].t).getTime() - hours * 3600000;
+  return obs.filter(o => new Date(o.t).getTime() >= cut);
 }
 
 function drawTicker(last) {
-  const rows = [...(last.boards[BOARD] || []).slice(0, 16),
+  const rows = [...(last.boards[board] || []).slice(0, 16),
                 ...(last.boards[CRYPTO] || []).slice(0, 8)];
   const html = rows.map(r => {
     const d = r.delta_24h, c = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
@@ -201,12 +314,15 @@ function drawTicker(last) {
 }
 
 function drawTiles(last) {
-  const rows = last.boards[BOARD] || [];
+  const rows = last.boards[board] || [];
   const top = rows[0] || {};
-  const churn = last.churn && last.churn[BOARD];
+  const churn = last.churn && last.churn[board];
   const fresh = rows.filter(r => r.new_entry).length;
   const conc = rows.slice(0, 3).reduce((a, r) => a + r.share, 0);
   const mover = rows.slice().sort((a, b) => (b.delta_24h || 0) - (a.delta_24h || 0))[0] || {};
+  // Churn and new entries are measured against the previous reading, and the
+  // previous reading is not always an hour back. Say which it was.
+  const since = gapWord(last.gap_hours);
   document.getElementById('tiles').innerHTML = `
     <div class="tile wide"><b>${top.ticker || 'n/a'}</b>
       <span>loudest, ${((top.share || 0) * 100).toFixed(0)}% of every mention on the board</span></div>
@@ -215,12 +331,12 @@ function drawTiles(last) {
     <div class="tile"><b>${(conc * 100).toFixed(0)}%</b>
       <span>attention in the top three names</span></div>
     <div class="tile"><b>${churn === undefined ? 'n/a' : (churn * 100).toFixed(0) + '%'}</b>
-      <span>of the board turned over this hour</span></div>
-    <div class="tile"><b>${fresh}</b><span>names that were not here an hour ago</span></div>`;
+      <span>of the board turned over ${since}</span></div>
+    <div class="tile"><b>${fresh}</b><span>names not here ${since.replace('in the last hour', 'an hour ago')}</span></div>`;
 }
 
 function drawBoard(last) {
-  document.getElementById('now').innerHTML = (last.boards[BOARD] || []).slice(0, 25).map(r => {
+  document.getElementById('now').innerHTML = (last.boards[board] || []).slice(0, 25).map(r => {
     const d = r.delta_24h, mv = r.rank_change;
     const dc = d > 0 ? 'up' : (d < 0 ? 'down' : 'dimc');
     const mc = mv > 0 ? 'up' : (mv < 0 ? 'down' : 'dimc');
@@ -232,45 +348,118 @@ function drawBoard(last) {
   }).join('');
 }
 
+/* Rank against real time.
+ *
+ * The x position was the observation's index, which drew every reading the
+ * same distance apart whatever the clock said. A nineteen hour outage came out
+ * looking like one quiet hour. Now x is the timestamp, so a missed hour leaves
+ * a hole of the right width, the line breaks across it, and the hole is
+ * shaded and labelled rather than smoothed over.
+ */
 function drawBump(obs) {
   const svg = document.getElementById('bump');
+  const empty = document.getElementById('bump-empty');
   if (obs.length < 2) {
     svg.style.display = 'none';
-    document.getElementById('bump-empty').hidden = false;
+    empty.hidden = false;
+    empty.textContent = obs.length
+      ? 'One reading on this board. A line needs two.'
+      : 'Nothing recorded on this board yet.';
     return;
   }
-  const W = 1000, H = 460, L = 34, R = 108, T = 14, B = 26, DEPTH = 10;
-  const tracked = new Set();
-  obs.forEach(o => (o.boards[BOARD] || []).slice(0, DEPTH).forEach(r => tracked.add(r.ticker)));
+  svg.style.display = '';
+  empty.hidden = true;
 
-  const x = i => L + (W - L - R) * (i / (obs.length - 1));
+  const W = 1000, H = 430, L = 34, R = 112, T = 14, B = 30, DEPTH = 10;
+  const expected = SERIES.expected_gap_hours || 1;
+  const BREAK = expected * 1.75;          // wider than this and the hour was missed
+
+  const t0 = new Date(obs[0].t).getTime();
+  const t1 = new Date(obs[obs.length - 1].t).getTime();
+  const span = Math.max(t1 - t0, 1);
+  const x = iso => L + (W - L - R) * ((new Date(iso).getTime() - t0) / span);
   const y = rank => T + (H - T - B) * ((rank - 1) / (DEPTH - 1));
 
   let out = '';
+
+  // Missed stretches first, so the lines sit on top of them.
+  const missed = missedHours(obs);
+  for (let i = 1; i < obs.length; i++) {
+    const hrs = (new Date(obs[i].t) - new Date(obs[i - 1].t)) / 3600000;
+    if (hrs <= BREAK) continue;
+    const a = x(obs[i - 1].t), b = x(obs[i].t);
+    out += `<rect class="gap-band" x="${a.toFixed(1)}" y="${T}" ` +
+           `width="${Math.max(b - a, 1).toFixed(1)}" height="${H - T - B}"/>` +
+           `<line class="gap-edge" x1="${a.toFixed(1)}" y1="${T}" x2="${a.toFixed(1)}" y2="${H - B}"/>` +
+           `<line class="gap-edge" x1="${b.toFixed(1)}" y1="${T}" x2="${b.toFixed(1)}" y2="${H - B}"/>`;
+    if (b - a > 40) {
+      out += `<text class="gap-note" x="${((a + b) / 2).toFixed(1)}" y="${H - B + 12}" ` +
+             `text-anchor="middle">${Math.round(hrs)}h not recorded</text>`;
+    }
+  }
+
   for (let k = 1; k <= DEPTH; k++) {
     out += `<line class="grid-line" x1="${L}" y1="${y(k)}" x2="${W - R}" y2="${y(k)}"/>` +
            `<text class="axis" x="${L - 8}" y="${y(k) + 3}" text-anchor="end">${k}</text>`;
   }
+
+  const tracked = new Set();
+  obs.forEach(o => Object.entries(o.r[board] || {})
+    .forEach(([tk, rank]) => { if (rank <= DEPTH) tracked.add(tk); }));
+
   [...tracked].forEach((ticker, idx) => {
     const colour = PALETTE[idx % PALETTE.length];
-    const pts = [];
-    obs.forEach((o, i) => {
-      const hit = (o.boards[BOARD] || []).find(r => r.ticker === ticker);
-      if (hit && hit.rank <= DEPTH) pts.push([x(i), y(hit.rank)]);
+    let d = '', last = null, drawn = 0;
+    obs.forEach(o => {
+      const rank = (o.r[board] || {})[ticker];
+      if (!rank || rank > DEPTH) { last = null; return; }
+      // Break the stroke across a gap rather than bridging it.
+      const jump = last && (new Date(o.t) - new Date(last)) / 3600000 > BREAK;
+      d += (last && !jump ? 'L' : 'M') + x(o.t).toFixed(1) + ' ' + y(rank).toFixed(1) + ' ';
+      last = o.t;
+      drawn++;
     });
-    if (pts.length < 2) return;
-    out += `<path class="bump-line" stroke="${colour}" d="${
-      pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ')}"/>`;
-    const e = pts[pts.length - 1];
-    out += `<circle class="bump-dot" cx="${e[0]}" cy="${e[1]}" r="3.6" fill="${colour}"/>`;
-    if (e[0] > W - R - 24) {
-      out += `<text class="bump-label" x="${W - R + 9}" y="${e[1] + 4}" fill="${colour}">${ticker}</text>`;
+    if (drawn < 2) return;
+    out += `<path class="bump-line" stroke="${colour}" d="${d.trim()}"/>`;
+
+    const endRank = (obs[obs.length - 1].r[board] || {})[ticker];
+    if (endRank && endRank <= DEPTH) {
+      out += `<circle class="bump-dot" cx="${x(obs[obs.length - 1].t).toFixed(1)}" ` +
+             `cy="${y(endRank)}" r="3.6" fill="${colour}"/>` +
+             `<text class="bump-label" x="${W - R + 9}" y="${y(endRank) + 4}" ` +
+             `fill="${colour}">${ticker}</text>`;
     }
   });
-  out += `<text class="axis" x="${L}" y="${H - 5}">${obs[0].known_at.slice(5, 16).replace('T', ' ')}</text>`;
-  out += `<text class="axis" x="${W - R}" y="${H - 5}" text-anchor="end">${
-    obs[obs.length - 1].known_at.slice(5, 16).replace('T', ' ')}</text>`;
+
+  // Time ticks, spaced by the clock and not by the reading count.
+  const step = niceStep(span / 3600000);
+  for (let h = 0; ; h += step) {
+    const at = t0 + h * 3600000;
+    if (at > t1 + 1) break;
+    const px = L + (W - L - R) * ((at - t0) / span);
+    out += `<text class="axis" x="${px.toFixed(1)}" y="${H - 8}" text-anchor="${
+      h === 0 ? 'start' : 'middle'}">${stamp(at, step)}</text>`;
+  }
+
   svg.innerHTML = out;
+  document.getElementById('chart-hint').innerHTML =
+    'Down is climbing. Time is to scale' +
+    (missed ? ', and <span class="down">' + missed +
+      ' unrecorded hour' + (missed === 1 ? '' : 's') + '</span> in this range show as gaps.'
+     : ', and every hour in this range was recorded.');
+}
+
+function niceStep(totalHours) {
+  for (const s of [1, 2, 3, 6, 12, 24, 48, 72, 168]) if (totalHours / s <= 6) return s;
+  return 336;
+}
+
+function stamp(ms, step) {
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2, '0');
+  return step >= 24
+    ? p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate())
+    : p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
 }
 </script>
 </body>

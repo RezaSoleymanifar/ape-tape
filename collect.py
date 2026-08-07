@@ -5,8 +5,8 @@ series only exists if something records one. This does that, hourly.
 
 Two things are written every hour:
 
-  data/raw/YYYY-MM-DD/HH.json.gz   the responses as received, gzipped
-  data/tape.jsonl                  derived statistics, one line per reading
+  data/raw/YYYY-MM-DD/HHMM.json.gz  the responses as received, gzipped
+  data/tape/YYYY-MM.jsonl           derived statistics, one line per reading
 
 Raw first, because a derived series can always be rebuilt from raw and raw can
 never be rebuilt from derived. If the delta formula here turns out to be wrong,
@@ -21,8 +21,15 @@ visible rather than silent.
 Each observation carries `known_at`: when we read it, not when the posts were
 written. Posts themselves are never stored.
 
+Hours get missed. A scheduler can drop a tick, a run can fail, the API can be
+down. So every observation also carries `previous_known_at` and `gap_hours`,
+the real distance back to the reading it was compared against. Without those,
+`rank_change` and `churn` read as "since an hour ago" when they may mean "since
+yesterday", and the chart draws a day-long gap as though it were an hour.
+
     python collect.py                 # append one observation
     python collect.py --dry-run       # print it, write nothing
+    python collect.py --min-gap 45    # skip if the last reading is newer than that
 """
 
 from __future__ import annotations
@@ -34,14 +41,15 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-TAPE = os.path.join(ROOT, "data", "tape.jsonl")
+TAPE = os.path.join(ROOT, "data", "tape")          # one .jsonl file per month
+LEGACY_TAPE = os.path.join(ROOT, "data", "tape.jsonl")
 RAW = os.path.join(ROOT, "data", "raw")
 LATEST = os.path.join(ROOT, "docs", "latest.json")
 SERIES = os.path.join(ROOT, "docs", "series.json")
@@ -56,10 +64,20 @@ BOARDS = [
     "options", "investing", "stockmarket", "pennystocks",
 ]
 
-DEPTH = 100                 # rows kept per board: two pages, where the tail turns over
+DEPTH = 100                 # rows kept per board, which is one page of the API
 PER_PAGE = 100              # what one page returns
-KEEP_HOURS = 24 * 90        # the rolling window the site reads
-SITE_BOARDS = ("all-stocks", "all-crypto")      # what the page charts
+KEEP_HOURS = 24 * 30        # the rolling window the site reads
+SITE_DEPTH = 25             # rows per board in the snapshot the page tables
+CHART_DEPTH = 16            # rows per board in the series the page charts
+
+# Every board is charted, not two of them. Nine were being recorded and seven
+# were never shown anywhere, which made the archive larger than the product.
+SITE_BOARDS = tuple(BOARDS)
+
+# Longer than this since the previous reading and the hour was missed. The
+# comparisons still work, they just describe a wider gap, and saying so is the
+# difference between a series and a guess.
+EXPECTED_GAP_HOURS = 1.0
 
 
 def fetch_board(board: str, client: httpx.Client) -> dict:
@@ -130,9 +148,25 @@ def observe(client: httpx.Client) -> tuple[dict, dict]:
             {"known_at": known_at, "boards": boards, "meta": meta})
 
 
+def gap_hours(now_iso: str, previous_iso: str | None) -> float | None:
+    """Real hours back to the reading everything here is compared against."""
+    if not previous_iso:
+        return None
+    delta = datetime.fromisoformat(now_iso) - datetime.fromisoformat(previous_iso)
+    return round(delta.total_seconds() / 3600, 3)
+
+
 def enrich(obs: dict, previous: dict | None) -> dict:
     """Fields that need the previous reading: rank movement since we last
-    looked, first appearance, and how much of each board turned over."""
+    looked, first appearance, and how much of each board turned over.
+
+    All three are differences against whatever the previous reading was, and
+    the previous reading is not always an hour old. `gap_hours` says how old,
+    so a consumer can tell an hourly move from a daily one.
+    """
+    obs["previous_known_at"] = (previous or {}).get("known_at")
+    obs["gap_hours"] = gap_hours(obs["known_at"], obs["previous_known_at"])
+
     for board, rows in obs["boards"].items():
         prev = {r["ticker"]: r for r in (previous or {}).get("boards", {}).get(board, [])}
         for row in rows:
@@ -146,11 +180,51 @@ def enrich(obs: dict, previous: dict | None) -> dict:
     return obs
 
 
-def load_tape() -> list[dict]:
-    if not os.path.exists(TAPE):
-        return []
-    with open(TAPE, encoding="utf-8") as fh:
-        return [json.loads(line) for line in fh if line.strip()]
+def tape_files() -> list[str]:
+    """Every month's file, oldest first, with the pre-sharding file ahead."""
+    found = []
+    if os.path.exists(LEGACY_TAPE):
+        found.append(LEGACY_TAPE)
+    if os.path.isdir(TAPE):
+        found += [os.path.join(TAPE, n) for n in sorted(os.listdir(TAPE))
+                  if n.endswith(".jsonl")]
+    return found
+
+
+def tape_path(known_at: str) -> str:
+    """The month a reading belongs in.
+
+    One file per month rather than one growing forever. A full reading is
+    about 135 KB, so an unsharded tape passes a gigabyte inside a year: too
+    large to open, too large to diff, and read in full by every hourly run.
+    """
+    return os.path.join(TAPE, known_at[:7] + ".jsonl")
+
+
+def load_tape(limit: int = KEEP_HOURS) -> list[dict]:
+    """The most recent `limit` readings.
+
+    Only the tail is ever needed: the newest reading to compare against, and
+    the site window to publish. Reading the whole archive to append one line
+    would make every run slower than the last.
+    """
+    out: list[dict] = []
+    for path in reversed(tape_files()):
+        with open(path, encoding="utf-8") as fh:
+            lines = [ln for ln in fh if ln.strip()]
+        out = [json.loads(ln) for ln in lines[-(limit - len(out)):]] + out
+        if len(out) >= limit:
+            break
+    return out
+
+
+def total_readings() -> int:
+    """How many readings exist in all, which the tail does not tell us."""
+    n = 0
+    for path in tape_files():
+        with open(path, encoding="utf-8") as fh:
+            n += sum(1 for ln in fh if ln.strip())
+    return n
 
 
 def write_raw(raw: dict) -> str:
@@ -163,50 +237,164 @@ def write_raw(raw: dict) -> str:
     return path
 
 
-def write_site(tape: list[dict]) -> None:
-    """A rolling window small enough for the page to fetch in one request."""
+def write_site(tape: list[dict], readings: int, first_known_at: str | None) -> None:
+    """Two files, split by what the page actually needs from each.
+
+    The chart wants a few numbers per ticker per hour, for a long stretch of
+    hours. The tables want every field, for the newest hour only. Writing both
+    needs into one file was costing about 8 KB an hour, which reaches roughly
+    17 MB across ninety days and is then downloaded whole on every visit.
+
+    So `series.json` carries only what a chart can be drawn from, and
+    `latest.json` carries the full newest reading.
+
+    The page lets a reader move a playhead back through the window and asks
+    what the board looked like at that hour, so the series has to answer for
+    every hour and not only the last one. Ranks alone could not: rank says the
+    order but not the distance, and "gaining attention" is a change in size,
+    not in position. Share is the size.
+
+    Three compressions keep that affordable:
+
+      * tickers are written once into a dictionary and referenced by index,
+        because the same forty or so symbols repeat across seven hundred hours
+      * rank is the position in the list, so it is not stored at all
+      * mentions are not stored per ticker, only the board's total, since
+        `share` already carries the fraction and the product recovers the count
+
+    That is roughly 1 KB an hour for nine boards, against about 8 KB for the
+    same information written plainly.
+    """
     window = []
+    dictionary: list[str] = []
+    index: dict[str, int] = {}
+
     for obs in tape[-KEEP_HOURS:]:
+        boards = obs.get("boards") or {}
+        if not boards:
+            continue                    # a failed reading charts as a gap
+        packed = {}
+        for b in SITE_BOARDS:
+            rows = boards.get(b)
+            if not rows:
+                continue
+            rows = sorted(rows, key=lambda r: r["rank"])[:CHART_DEPTH]
+            keys, shares = [], []
+            for r in rows:
+                tk = r["ticker"]
+                if tk not in index:
+                    index[tk] = len(dictionary)
+                    dictionary.append(tk)
+                keys.append(index[tk])
+                # share in hundred-thousandths, the precision `derive` rounds to
+                shares.append(round((r.get("share") or 0) * 100000))
+            packed[b] = {
+                "k": keys,
+                "s": shares,
+                # Total mentions across every row we kept, which is the
+                # denominator `share` was divided by. mentions = share * m.
+                "m": sum(int(r.get("mentions") or 0) for r in boards.get(b, [])),
+            }
         window.append({
-            "known_at": obs["known_at"],
-            "churn": {k: v for k, v in (obs.get("churn") or {}).items() if k in SITE_BOARDS},
-            "boards": {b: obs["boards"].get(b, [])[:25] for b in SITE_BOARDS},
+            "t": obs["known_at"],
+            "gap": obs.get("gap_hours"),
+            "b": packed,
+            "c": {k: v for k, v in (obs.get("churn") or {}).items()
+                  if k in SITE_BOARDS},
         })
+
     os.makedirs(os.path.dirname(SERIES), exist_ok=True)
     with open(SERIES, "w", encoding="utf-8") as fh:
-        json.dump({"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                   "observations": window}, fh, separators=(",", ":"))
+        json.dump({
+            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "window_hours": KEEP_HOURS,
+            "expected_gap_hours": EXPECTED_GAP_HOURS,
+            "depth": CHART_DEPTH,
+            "boards": list(SITE_BOARDS),
+            "tickers": dictionary,
+            "observations": window,
+        }, fh, separators=(",", ":"))
+
+    newest = tape[-1] if tape else {}
     with open(LATEST, "w", encoding="utf-8") as fh:
-        json.dump(window[-1] if window else {}, fh, indent=1)
+        json.dump({
+            "known_at": newest.get("known_at"),
+            "previous_known_at": newest.get("previous_known_at"),
+            "gap_hours": newest.get("gap_hours"),
+            "readings": readings,
+            "first_known_at": first_known_at,
+            "churn": newest.get("churn") or {},
+            "meta": newest.get("meta") or {},
+            "boards": {b: (newest.get("boards") or {}).get(b, [])[:SITE_DEPTH]
+                       for b in SITE_BOARDS},
+        }, fh, separators=(",", ":"))
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--min-gap", type=float, default=0.0, metavar="MINUTES",
+                    help="do nothing if the last reading is newer than this. "
+                         "Lets the job be scheduled more than once an hour "
+                         "without recording more than once an hour.")
     args = ap.parse_args()
 
     tape = load_tape()
+    previous = tape[-1] if tape else None
+
+    if args.min_gap and previous:
+        age = datetime.now(timezone.utc) - datetime.fromisoformat(previous["known_at"])
+        if age < timedelta(minutes=args.min_gap):
+            print(f"last reading is {age.total_seconds() / 60:.0f} min old, "
+                  f"under the {args.min_gap:.0f} min floor. Nothing to do.")
+            return 0
+
     with httpx.Client(follow_redirects=True) as client:
         raw, obs = observe(client)
-    obs = enrich(obs, tape[-1] if tape else None)
+    obs = enrich(obs, previous)
+
+    # Every board failed. Appending this would put a line on the tape with no
+    # numbers behind it and overwrite the page's data with blanks, which reads
+    # as "the boards went quiet" rather than "we could not reach them".
+    if not obs["boards"]:
+        print("no board answered. Recording nothing, so the gap stays visible.",
+              file=sys.stderr)
+        print(json.dumps(obs["meta"], indent=1), file=sys.stderr)
+        return 1
 
     kept = sum(len(v) for v in obs["boards"].values())
+    failed = [b for b, m in obs["meta"].items() if "error" in m]
     top = obs["boards"].get("all-stocks", [])[:5]
+    gap = obs["gap_hours"]
     print(f"{obs['known_at']}  {len(obs['boards'])} boards, {kept} rows  " +
           "  ".join(f"{r['ticker']}:{r['mentions']}" for r in top))
+    print(f"  gap since previous: "
+          + ("first reading" if gap is None else f"{gap:.2f}h")
+          + (f"  MISSED {round(gap - EXPECTED_GAP_HOURS)} hour(s)"
+             if gap and gap >= EXPECTED_GAP_HOURS * 2 else ""))
+    if failed:
+        print(f"  boards that did not answer: {', '.join(failed)}")
 
     if args.dry_run:
         print(json.dumps(obs["meta"], indent=1))
-        return
+        return 0
 
     print(f"  raw -> {os.path.relpath(write_raw(raw), ROOT)}")
-    os.makedirs(os.path.dirname(TAPE), exist_ok=True)
-    with open(TAPE, "a", encoding="utf-8") as fh:
+    shard = tape_path(obs["known_at"])
+    os.makedirs(TAPE, exist_ok=True)
+    with open(shard, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(obs, separators=(",", ":")) + "\n")
+    print(f"  tape -> {os.path.relpath(shard, ROOT)}")
+
     tape.append(obs)
-    write_site(tape)
-    print(f"  tape now {len(tape)} observations ({len(tape) / 24:.1f} days)")
+    first = tape_files()
+    with open(first[0], encoding="utf-8") as fh:
+        first_at = json.loads(fh.readline())["known_at"]
+    readings = total_readings()
+    write_site(tape[-KEEP_HOURS:], readings, first_at)
+    print(f"  tape now {readings} readings ({readings / 24:.1f} days)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
